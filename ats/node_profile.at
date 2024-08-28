@@ -1,0 +1,12 @@
+runLitpScript node_profile_base.inc
+
+# LUN Attached device on a blade
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name="hd0" size="512G" bootable=true uuid="6006016011602d00bc383819f679e311"
+
+litp create_plan
+runPlanEnd
+
+assertDirectoryContents node_profile/ /opt/ericsson/nms/litp/etc/puppet/manifests/plugins/
+
+assertError create_plan
+# assertPlanLength 3

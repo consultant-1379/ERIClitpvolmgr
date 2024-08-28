@@ -1,0 +1,65 @@
+runLitpScript ../minimum_rhel7_deployment.inc
+
+litp create_plan
+
+let __update_grub_node1 CallbackTask _base_rpc_task /deployments/d1/clusters/c1/nodes/node1/storage_profile
+let __update_grub_node2 CallbackTask _base_rpc_task /deployments/d1/clusters/c1/nodes/node2/storage_profile
+
+let __configure_root_fs_node1 ConfigTask node1 lvm::volume vg_1_root /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg_1/file_systems/root
+let __configure_root_fs_node2 ConfigTask node2 lvm::volume vg_1_root /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_1/file_systems/root
+
+assertTaskBeforeTask __configure_root_fs_node1 __update_grub_node1
+assertTaskBeforeTask __configure_root_fs_node2 __update_grub_node2
+
+litp run_plan
+
+litp create -p /infrastructure/systems/system_1/disks/disk_1 -t disk -o name=hd1 size=28G bootable=false uuid=ATA_VBOX_HARDDISK_VXl2bde152-ab345c64
+litp create -p /infrastructure/systems/system_2/disks/disk_1 -t disk -o name=hd1 size=28G bootable=false uuid=ATA_VBOX_HARDDISK_VMk5ef139-dl549m61
+
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_2 -t volume-group -o volume_group_name=vg_app1
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_2/file_systems/fs1 -t file-system -o type=xfs mount_point=/var/opt_rh size=2G
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_2/file_systems/fs2 -t file-system -o type=xfs mount_point=/var/lib size=2G
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_2/file_systems/fs3 -t file-system -o type=xfs mount_point=/opt size=3G
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_2/physical_devices/disk_1 -t physical-device -o device_name=hd1
+
+litp create_plan
+
+let __fs1_mount_task_node1 ConfigTask node1 mount /var/opt_rh /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg_2/file_systems/fs1
+let __fs2_mount_task_node1 ConfigTask node1 mount /var/lib /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg_2/file_systems/fs2
+let __fs3_mount_task_node1 ConfigTask node1 mount /opt /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg_2/file_systems/fs3
+
+let __fs1_mount_task_node2 ConfigTask node2 mount /var/opt_rh /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_2/file_systems/fs1
+let __fs2_mount_task_node2 ConfigTask node2 mount /var/lib /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_2/file_systems/fs2
+let __fs3_mount_task_node2 ConfigTask node2 mount /opt /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_2/file_systems/fs3
+
+assertTaskBeforeTask __fs1_mount_task_node1 __update_grub_node1
+assertTaskBeforeTask __fs2_mount_task_node1 __update_grub_node1
+assertTaskBeforeTask __fs3_mount_task_node1 __update_grub_node1
+assertTaskBeforeTask __fs1_mount_task_node2 __update_grub_node2
+assertTaskBeforeTask __fs2_mount_task_node2 __update_grub_node2
+assertTaskBeforeTask __fs3_mount_task_node2 __update_grub_node2
+
+litp run_plan
+
+litp remove -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_2
+
+litp create_plan
+
+assertCallbackTask _base_rpc_task /deployments/d1/clusters/c1/nodes/node1/storage_profile
+assertCallbackTask _base_rpc_task /deployments/d1/clusters/c1/nodes/node2/storage_profile
+
+litp run_plan
+
+
+litp update -p /deployments/d1/clusters/c1 -o grub_lv_enable="false"
+
+litp create_plan
+
+assertState -p /deployments/d1/clusters/c1 Updated
+
+litp run_plan
+
+litp update -p /deployments/d1/clusters/c1 -d grub_lv_enable
+
+let __err_test --err_type DoNothingPlanError --err_message "Create plan failed: no tasks were generated"
+assertError __err_test create_plan

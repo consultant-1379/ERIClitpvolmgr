@@ -1,0 +1,29 @@
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+runPlanEnd
+
+# 1. Update the size of file system on node2, breaking inheritance of size property
+#    and causing validation error that volume group is too big for system disks
+litp update -p /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_1/file_systems/root -o size=30G
+let __err1 --err_type ValidationError --err_vpath /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_1 --err_message "The System Disks (28672 MB) on node 'node2' are not large enough for volume group requirement (64088 MB). Volume group requirement = ((file systems including snapshots) 63488 MB) + (LVM metadata 600 MB.)"
+assertError __err1 create_plan
+assertProperty /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_1/file_systems/root -o size=30G
+assertProperty /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o size=4G
+
+# 2. Reduce size of system disk
+assertProperty /infrastructure/systems/system_2/disks/disk_0 -o size=28G
+litp update -p /infrastructure/systems/system_2/disks/disk_0 -o size=20G
+let __err2 --err_type ValidationError --err_vpath /deployments/d1/clusters/c1/nodes/node2/system/disks/disk_0 --err_message 'Decreasing the "size" property of disk "hd0" associated with LVM storage-profile on peer node "node2" is not supported'
+assertError __err2 create_plan
+
+# 3. Increase size of system disk to below size of volume group and verify expected error
+litp update -p /infrastructure/systems/system_2/disks/disk_0 -o size=60G
+let __err3 --err_type ValidationError --err_vpath /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_1 --err_message "The System Disks (61440 MB) on node 'node2' are not large enough for volume group requirement (64088 MB). Volume group requirement = ((file systems including snapshots) 63488 MB) + (LVM metadata 600 MB.)"
+assertError __err3 create_plan
+
+# 4. Increase size of system disk to above size of volume group and verify that no error is raised
+litp update -p /infrastructure/systems/system_2/disks/disk_0 -o size=65G
+litp create_plan
+# show show_plan

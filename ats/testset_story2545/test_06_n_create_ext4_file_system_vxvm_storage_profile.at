@@ -1,0 +1,23 @@
+#Description:
+#    Verify that ext4 file systems cannot be created in
+#    a vxvm storage profile
+#Actions:
+#    1. Create storage profile with volume_driver=vxvm
+#    2. Create ext4 file system in the vxvm storage profile.
+#    3. Create physical device in the volume group.
+#    4. Ensure that validation error is raised.
+#Results:
+#    Validation error raised.
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp create -p /infrastructure/storage/storage_profiles/sp2545 -t storage-profile -o volume_driver=vxvm
+litp create -p /infrastructure/storage/storage_profiles/sp2545/volume_groups/vxvm_vol_grp -t volume-group -o volume_group_name='vxvm_vol_grp'
+litp create -p /infrastructure/storage/storage_profiles/sp2545/volume_groups/vxvm_vol_grp/file_systems/ext4_on_vxvm -t file-system -o type='ext4' mount_point='/media/litp' size='5G'
+litp create -p /infrastructure/storage/storage_profiles/sp2545/volume_groups/vxvm_vol_grp/physical_devices/disk_1 -t physical-device -o device_name='hd1'
+
+assertError  --err_type ValidationError --err_vpath /infrastructure/storage/storage_profiles/sp2545/volume_groups/vxvm_vol_grp/file_systems/ext4_on_vxvm --err_message 'Create plan failed: The "volume_driver" property of the storage-profile has a value "vxvm"; the "type" property on all file-systems must have a value of "vxfs".' create_plan

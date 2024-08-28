@@ -1,0 +1,26 @@
+## Test verifies that tasks for model changes are not included in the plan when
+## a create_snapshot is run.
+
+runLitpScript ../minimum_deployment.inc
+
+litp create_plan
+litp run_plan
+
+# add a dummy plugin that just creates a task
+add-plugins ../plugins/dummy_plugin
+litp create_plan
+
+## Assert a plan in initial state is created
+assertCallbackTask cb_update_property /deployments/d1/clusters/c1/nodes/node1
+
+## Create a snapshot
+litp create_snapshot
+
+## Verify deployment plan tasks are not present
+assertNoCallbackTask cb_update_property /deployments/d1/clusters/c1/nodes/node1
+
+## Recreate the deployment plan
+litp create_plan
+## The same task is created
+assertCallbackTask cb_update_property /deployments/d1/clusters/c1/nodes/node1
+litp run_plan

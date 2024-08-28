@@ -1,0 +1,48 @@
+#    Description:
+#        Verify that the user can't use vxvm storage profile in mn node
+#    Actions:
+#         2. create system
+#         3. create disk
+#         5. get storage-profiles path
+#         6. create test storage profile driver set to vxvm
+#         7. create volume group
+#         8. create root fs
+#         9. create swap fs
+#         10. create physical device
+#         11. create test node
+#         12. get test node url
+#         13. link test storage profile to test node
+#         14. Ensure that validation error is raised.
+#    Results:
+#        Validation error raised
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp create -p /infrastructure/systems/system2545 -t system -o system_name='system2545'
+litp create -p /infrastructure/systems/system2545/disks/disk0 -t disk -o name='hd0' size='40G' bootable='true' uuid='ee7cf0a0-1922-401b-a1ae-6ec9261484c0'
+litp create -p /infrastructure/storage/storage_profiles/profile_test2545 -t storage-profile -o volume_driver='vxvm'
+litp create -p /infrastructure/storage/storage_profiles/profile_test2545/volume_groups/vg1 -t volume-group -o volume_group_name='vg_root'
+litp create -p /infrastructure/storage/storage_profiles/profile_test2545/volume_groups/vg1/file_systems/root -t file-system -o type='vxfs' size='1G' mount_point='/mp_2545_5'
+litp create -p /infrastructure/storage/storage_profiles/profile_test2545/volume_groups/vg1/file_systems/swap -t file-system -o type='swap' mount_point='swap' snap_size=0 size='1G'
+litp create -p /infrastructure/storage/storage_profiles/profile_test2545/volume_groups/vg1/physical_devices/internal -t physical-device -o device_name='hd0'
+
+litp create -p /deployments/d1/clusters/tmp -t cluster
+litp create -p /deployments/d1/clusters/tmp/nodes/node2545_5 -t node -o hostname='mn99'
+litp inherit -p /deployments/d1/clusters/tmp/nodes/node2545_5/system -s /infrastructure/systems/system2545
+
+litp inherit -p /deployments/d1/clusters/tmp/nodes/node2545_5/os -s /software/profiles/rhel_6_4
+litp inherit -p /deployments/d1/clusters/tmp/nodes/node2545_5/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+litp create -p /deployments/d1/clusters/tmp/nodes/node2545_5/network_interfaces/if0 -t eth -o device_name='eth0' macaddress='BB:BB:BB:BB:BB:BB' ipaddress='10.10.10.2' network_name='mgmt'
+litp remove -p /deployments/d1/clusters/tmp/nodes/node2545_5/storage_profile
+litp inherit -p /deployments/d1/clusters/tmp/nodes/node2545_5/storage_profile -s /infrastructure/storage/storage_profiles/profile_test2545
+
+let __err_a --err_type ValidationError --err_message "Create plan failed: Storage profile /deployments/d1/clusters/tmp/nodes/node2545_5/storage_profile does not have a VG with a FS mounted on '/'"
+let __err_b --err_type ValidationError --err_message "Create plan failed: A storage_profile at node level must have its volume_driver property set to 'lvm'"
+let __err_c --err_type ValidationError --err_message 'Create plan failed: The "volume_driver" property of the storage-profile has a value "vxvm"; the "type" property on all file-systems must have a value of "vxfs".'
+
+assertError __err_a __err_b __err_c create_plan
+

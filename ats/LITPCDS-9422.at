@@ -1,0 +1,19 @@
+runLitpScript node_profile_base.inc
+add-plugins ./plugins/patch_mcollective_plugin
+
+litp create -t system -p /infrastructure/systems/system2 -o system_name="AT_node2"
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name=hd0 size=270G bootable=true uuid="ABCD"
+litp create -t disk -p /infrastructure/systems/system2/disks/disk0 -o name=hd0 size=270G bootable=true uuid="ATA_VBOX_HARDDISK_VBe57c4204-586a04e3"
+litp create -t node -p /deployments/at/clusters/cluster1/nodes/node2 -o hostname="node2"
+litp create -t network-interface -p /deployments/at/clusters/cluster1/nodes/node2/network_interfaces/ip1 -o network_name='bla'
+litp inherit -p /deployments/at/clusters/cluster1/nodes/node2/system -s /infrastructure/systems/system2
+litp inherit -p /deployments/at/clusters/cluster1/nodes/node2/os -s /software/profiles/osprofile1
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/prof1 -o volume_driver='lvm'
+litp create -t volume-group -p /infrastructure/storage/storage_profiles/prof1/volume_groups/vg1 -o volume_group_name="root_vg"
+litp create -t file-system -p /infrastructure/storage/storage_profiles/prof1/volume_groups/vg1/file_systems/swap -o type=vxfs mount_point=/test size=2G
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/prof1/volume_groups/vg1/physical_devices/internal -o device_name=hd0
+
+assertError --err_message 'ItemType "node" is required to have a "reference" with name "storage_profile" and type "storage-profile-base"' create_plan
+
+litp create_snapshot

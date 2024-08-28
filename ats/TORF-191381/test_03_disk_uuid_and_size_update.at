@@ -1,0 +1,30 @@
+add-extensions torf_191381_model_extension
+runLitpScript torf_191381_test_setup.inc
+
+litp create_plan
+litp run_plan
+
+assertState -p /deployments/d1/clusters/c1/nodes/n1/system/disks/d1 Applied
+assertState -p /deployments/d1/clusters/c1/nodes/n2/system/disks/d1 Applied
+assertState -p /infrastructure/systems/s1/disks/d1 Applied
+assertState -p /infrastructure/systems/s2/disks/d1 Applied
+
+litp update -p /infrastructure/systems/s1/disks/d1 -o uuid=10000000fc85c928 size=60G
+litp update -p /infrastructure/systems/s2/disks/d1 -o uuid=10000000fc85c928 size=60G
+
+assertState -p /deployments/d1/clusters/c1/nodes/n1/system/disks/d1 Updated
+assertState -p /deployments/d1/clusters/c1/nodes/n2/system/disks/d1 Updated
+assertState -p /infrastructure/systems/s1/disks/d1 Updated
+assertState -p /infrastructure/systems/s2/disks/d1 Updated
+
+litp create_plan
+
+assertNoCallbackTask _vxvm_disk_uuid_update_cb /deployments/d1/clusters/c1/nodes/n1/system/disks/d1
+assertNoCallbackTask _vxvm_disk_uuid_update_cb /deployments/d1/clusters/c1/nodes/n2/system/disks/d1
+
+litp run_plan
+
+assertState -p /deployments/d1/clusters/c1/nodes/n1/system/disks/d1 Applied
+assertState -p /deployments/d1/clusters/c1/nodes/n2/system/disks/d1 Applied
+assertState -p /infrastructure/systems/s1/disks/d1 Applied
+assertState -p /infrastructure/systems/s2/disks/d1 Applied

@@ -1,0 +1,27 @@
+## This test verifies that if the snap_size is set to 0 for a file
+## system, but the named_backup_snap_size is set to non zero there will only be
+## a named snapshot for the file system
+
+runLitpScript ../deploymentVXVM.inc
+
+litp create_plan
+litp run_plan
+
+
+litp update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size=0
+litp update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=0
+litp update -p  /deployments/d1/clusters/c1/storage_profile/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=58
+assertProperty /deployments/d1/clusters/c1/storage_profile/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=58
+
+litp create_snapshot
+assertNoCallbackTask _create_vxvm_snapshot_cb /snapshots/snapshot
+
+litp create_snapshot -n test
+assertCallbackTask _create_vxvm_snapshot_cb /snapshots/test
+
+litp remove_snapshot -n test
+assertCallbackTask _remove_vxvm_snapshot_cb /snapshots/test
+
+litp remove_snapshot
+assertNoCallbackTask _remove_vxvm_snapshot_cb /snapshots/snapshot
+

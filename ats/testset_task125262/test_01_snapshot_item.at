@@ -1,0 +1,47 @@
+## this test verifies that the task is attached to the correct snapshot item
+runLitpScript ../deploymentVXVM.inc
+
+litp create_plan
+litp run_plan
+
+## 2. VXVM
+
+
+litp create_snapshot
+
+litp create_snapshot -n test
+
+litp remove_snapshot
+assertCallbackTask _check_active_nodes_cb /snapshots/snapshot
+assertCallbackTask _check_restores_in_progress_cb /snapshots/snapshot
+assertCallbackTask _check_remove_nodes_reachable_cb /snapshots/snapshot
+assertCallbackTask _check_lvm_restores_in_progress_cb /snapshots/snapshot
+assertCallbackTask _remove_vxvm_snapshot_cb /snapshots/snapshot
+
+litp remove_snapshot -n test
+assertCallbackTask _check_active_nodes_cb /snapshots/test
+assertCallbackTask _check_restores_in_progress_cb /snapshots/test
+assertCallbackTask _check_remove_nodes_reachable_cb /snapshots/test
+assertCallbackTask _check_lvm_restores_in_progress_cb /snapshots/test
+assertCallbackTask _remove_vxvm_snapshot_cb /snapshots/test
+
+litp create_snapshot
+
+litp create_snapshot -n test2
+
+litp create_snapshot -n test3
+
+litp remove_snapshot -n test2
+assertCallbackTask _check_active_nodes_cb /snapshots/test2
+assertCallbackTask _check_restores_in_progress_cb /snapshots/test2
+assertCallbackTask _check_remove_nodes_reachable_cb /snapshots/test2
+assertCallbackTask _check_lvm_restores_in_progress_cb /snapshots/test2
+assertCallbackTask _remove_vxvm_snapshot_cb /snapshots/test2
+
+litp remove_snapshot
+assertCallbackTask _check_active_nodes_cb /snapshots/snapshot
+assertCallbackTask _check_restores_in_progress_cb /snapshots/snapshot
+assertCallbackTask _check_remove_nodes_reachable_cb /snapshots/snapshot
+assertCallbackTask _check_lvm_restores_in_progress_cb /snapshots/snapshot
+assertCallbackTask _remove_vxvm_snapshot_cb /snapshots/snapshot
+

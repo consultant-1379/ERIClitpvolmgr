@@ -1,0 +1,47 @@
+##############################################################
+#TORF-106491:
+#     Remove a disk after increasing physical volume
+# Description:
+#     Test to verify that a user can increase the size of the
+#     PV and then subsequently remove the disk from the model
+# Steps:
+#       Deploy cluster with nodes and disks
+#       Add additional disk to model on nodes
+#       Create/ Run plan
+#       Increase PV size of new disk
+#       Create/ Run plan
+#       Remove newly added disk
+#       Ensure no validation error is returned
+# Result:
+#       A user can remove newly added disk regardless of
+#       increasing its size
+######################################################
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create -p /infrastructure/systems/system_ms/disks/test_disk -t disk -o name='ms_hd' size='20G' bootable='false' uuid='ATA_VBOX_HARDDISK_VB1d2c0e36-test'
+
+litp create -p /infrastructure/storage/storage_profiles/profile_ms -t storage-profile -o volume_driver=lvm
+litp create -p /infrastructure/storage/storage_profiles/profile_ms/volume_groups/vg_ms -t volume-group -o volume_group_name="vg_ms"
+litp create -p /infrastructure/storage/storage_profiles/profile_ms/volume_groups/vg_ms/file_systems/fs_ms -t file-system -o type='ext4' mount_point='/test' size=8G
+litp create -p /infrastructure/storage/storage_profiles/profile_ms/volume_groups/vg_ms/physical_devices/ms_dev -t physical-device -o device_name=ms_hd
+
+litp inherit -p /ms/storage_profile -s /infrastructure/storage/storage_profiles/profile_ms
+
+litp create_plan
+runPlanEnd
+
+litp update -p /infrastructure/systems/system_ms/disks/test_disk -o size='40G'
+litp update -p /infrastructure/storage/storage_profiles/profile_ms/volume_groups/vg_ms/file_systems/fs_ms -o size=10G
+
+litp create_plan
+# Verify plan contains tasks to resize pv and lv and verify pv task is before lv task
+let __pv_resize_ms CallbackTask _base_rpc_task /ms/system/disks/test_disk disk_fact_name=disk_ata_vbox_harddisk_vb1d2c0e36_test_dev
+let __resize_lv_ms ConfigTask ms1 lvm::volume vg_ms_fs_ms /ms/storage_profile/volume_groups/vg_ms/file_systems/fs_ms size=10G ensure=present vg=vg_ms pv='["$::disk_ata_vbox_harddisk_vb1d2c0e36_test_dev"]' fstype=ext4
+
+assertTaskBeforeTask __pv_resize_ms __resize_lv_ms
+
+litp remove -p /infrastructure/systems/system_ms/disks/test_disk
+
+litp create_plan
+runPlanEnd

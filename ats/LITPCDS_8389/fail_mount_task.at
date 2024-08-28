@@ -1,0 +1,32 @@
+runLitpScript ../node_profile_base.inc
+
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg2 -t volume-group -o volume_group_name="data"
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg2/file_systems/test1 -t file-system -o type="ext4" mount_point="/test1" size="10G"
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg2/file_systems/test2 -t file-system -o type="ext4" mount_point="/test2" size="32G"
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name="hd0" size="512G" bootable=true uuid="6006016011602d00bc383819f679e311"
+litp create -t disk -p /infrastructure/systems/system1/disks/disk1 -o name="hd1" size="112G" bootable=false uuid="abcd"
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg2/physical_devices/disk1 -o device_name=hd1
+#Need to do this because the include script at the top already ran the inherit command
+litp remove -p /deployments/at/clusters/cluster1/nodes/node1/system
+litp inherit -p /deployments/at/clusters/cluster1/nodes/node1/system -s /infrastructure/systems/system1
+
+litp create_plan
+#show show_plan
+
+#assert that there is a mount task
+assertConfigTask node1 mount /test2 /deployments/at/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg2/file_systems/test2 require='[{"type": "Lvm::Volume", "value": "vg2_test2"}]' fstype='ext4' atboot='true' ensure='mounted' device='/dev/data/vg2_test2' options='defaults,x-systemd.device-timeout=300' pass='2'
+
+#fail the mount task which should result in no purge task being re-run later
+failConfigTask mount node1 /deployments/at/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg2/file_systems/test2
+litp run_plan
+
+#run plan and ensure the task is failed
+
+assertPlanState failed
+
+assertTask 1 mount node1 /deployments/at/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg2/file_systems/test2 Failed
+
+#create the plan again
+litp create_plan
+#show show_plan
+

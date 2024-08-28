@@ -1,0 +1,24 @@
+#Description:
+#    This test will verify that the user cannot create a Deployment
+#    snapshot when a Named Backup Snapshot exists. Verify that the user
+#    gets an appropriate error message.
+#Actions:
+#    1. Call CLI command to create a Named Backup Snapshot.
+#    2. Verify that a plan runs successfully to create the snapshots.
+#    3. Attempt to create an Deployment Snapshot
+#    4. Verify that an error is returned.
+#Result:
+#    The user cannot create an Deployment Snapshot when a named backup
+#    snapshot exists.
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp create_snapshot --name ss2
+
+assertState -p /snapshots/ss2 Applied
+
+assertError  --err_type ValidationError  --err_vpath /snapshots/snapshot --err_message 'Cannot create a Deployment Snapshot if Named Backup Snapshots exist.' create_snapshot

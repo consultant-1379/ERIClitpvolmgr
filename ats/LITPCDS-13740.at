@@ -1,0 +1,64 @@
+## LITPCDS-13740 deals with the removal of volume_groups where a snapshot exists.
+## Removal of volume_groups is not supported.
+## Legacy functionality from LITPCDS-5866 meant that a remove snapshot mco call was
+## run when a volume-group was removed.
+## Updated behaviour is to validate against this scenario and to run remove_snapshot manually
+
+runLitpScript ./minimum_deployment.inc
+add-plugins ./plugins/patch_mcollective_plugin
+
+# create a storage-profile
+litp create -t disk -p /infrastructure/systems/system_1/disks/disk_1 -o name=disk_1 size=40G bootable=false uuid=3000000021c06390
+litp create -t disk -p /infrastructure/systems/system_1/disks/disk_2 -o name=disk_2 size=40G bootable=false uuid=3000000021c06380
+litp create -t disk -p /infrastructure/systems/system_2/disks/disk_1 -o name=disk_1 size=40G bootable=false uuid=3000000021c06390
+litp create -t disk -p /infrastructure/systems/system_2/disks/disk_2 -o name=disk_2 size=40G bootable=false uuid=3000000021c06380
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/sp1 -o volume_driver=vxvm
+litp create -t volume-group -p /infrastructure/storage/storage_profiles/sp1/volume_groups/storeg -o volume_group_name=storeg
+litp create -t file-system -p /infrastructure/storage/storage_profiles/sp1/volume_groups/storeg/file_systems/vol0 -o type='vxfs' mount_point="/jboss"  size='2G'
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/sp1/volume_groups/storeg/physical_devices/disk_1 -o device_name='disk_1'
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/sp2 -o volume_driver=lvm
+litp create -t volume-group -p /infrastructure/storage/storage_profiles/sp2/volume_groups/storeg -o volume_group_name=storeg
+litp create -t file-system -p /infrastructure/storage/storage_profiles/sp2/volume_groups/storeg/file_systems/vol0 -o type='ext4' mount_point="/oracle"  size='2G'
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/sp2/volume_groups/storeg/physical_devices/disk_1 -o device_name='disk_2'
+
+litp inherit -p /deployments/d1/clusters/c1/storage_profile/st1 -s /infrastructure/storage/storage_profiles/sp1
+litp inherit -p /deployments/d1/clusters/c1/storage_profile/st2 -s /infrastructure/storage/storage_profiles/sp2
+
+litp create_plan
+litp run_plan
+
+#create a snapshot
+litp create_snapshot
+litp remove_plan
+
+#mark storage-profile ForRemoval
+litp remove -p /infrastructure/storage/storage_profiles/sp1
+
+#trigger ValidationError
+assertNoPlan
+assertError --errors_length 1 --err_type ValidationError --err_vpath /deployments/d1/clusters/c1/storage_profile/st1/volume_groups/storeg --err_message 'Create plan failed: Cannot remove volume-group "storeg" because a snapshot exists.' create_plan
+assertNoPlan
+litp create_snapshot -n named
+litp remove_plan
+assertNoPlan
+assertError --errors_length 1 --err_type ValidationError --err_vpath /deployments/d1/clusters/c1/storage_profile/st1/volume_groups/storeg --err_message 'Create plan failed: Cannot remove volume-group "storeg" because snapshots exist.' create_plan
+assertNoPlan
+litp remove_snapshot -n named
+litp remove_snapshot
+litp create_plan
+litp run_plan
+
+#create a snapshot
+litp create_snapshot
+litp remove_plan
+
+#mark storage-profile ForRemoval
+litp remove -p /infrastructure/storage/storage_profiles/sp2
+
+#trigger No ValidationError
+assertNoPlan
+litp create_plan
+litp create_snapshot -n named
+litp create_plan
+litp run_plan

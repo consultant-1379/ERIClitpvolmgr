@@ -1,0 +1,63 @@
+litp create -t system -p /infrastructure/systems/s3          -o system_name="ms"
+litp create -t disk   -p /infrastructure/systems/s3/disks/d0 -o name='hd0' size='1300G' bootable='true' uuid="ATA_VBOX_HARDDISK_VB24150799-28e77304"
+
+# Add kickstarted file systems to model
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/ms_sp
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1                      -o volume_group_name='vg_root'
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs1     -o type='ext4' mount_point='/fs1' size='50G' snap_size='10'
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs2     -o type='ext4' mount_point='/fs2' size='50G' snap_size='10'
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/var_log     -o type='ext4' mount_point='/var/log' size='50G' snap_size='100'
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/home     -o type='ext4' mount_point='/home' size='20G' snap_size='100'
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/var_www     -o type='ext4' mount_point='/var/www' size='160G' snap_size='100'
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/software     -o type='ext4' mount_point='/software' size='300G' snap_size='100'
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/physical_devices/pd0 -o device_name='hd0'
+
+litp inherit -p /ms/system          -s /infrastructure/systems/s3
+litp inherit -p /ms/storage_profile -s /infrastructure/storage/storage_profiles/ms_sp
+
+# Mock mcollective to return a fact name [hard coded] for a VG name
+add-plugins ../plugins/patch_mcollective_plugin
+
+let __disk_size_error1 --err_type ValidationError --err_message "The System Disks (1331200 MB) on node 'ms1' are not large enough for volume group requirement (1481304 MB). Volume group requirement = ((file systems including snapshots) 1480704 MB) + (LVM metadata 600 MB.)"
+
+assertError __disk_size_error1 create_plan
+
+# Remove most of these modelled file systems to allow plan to be created
+litp remove -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs1
+litp remove -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs2
+litp remove -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/var_www
+litp remove -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/software
+litp remove -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/home
+
+
+litp create_plan
+
+# Recreate some of the file systems to get further size errors
+litp create -t file-system -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs1 -o type='ext4' mount_point='/fs1' size='50G' snap_size='10'
+litp create -t file-system -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/var_www -o type='ext4' mount_point='/var/www' size='160G' snap_size='100'
+litp create -t file-system -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/software -o type='ext4' mount_point='/software' size='300G' snap_size='100'
+litp create -t file-system -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/home -o type='ext4' mount_point='/home' size='20G' snap_size='100'
+
+let __disk_size_error2 --err_type ValidationError --err_message "The System Disks (1331200 MB) on node 'ms1' are not large enough for volume group requirement (1424984 MB). Volume group requirement = ((file systems including snapshots) 1424384 MB) + (LVM metadata 600 MB.)"
+assertError __disk_size_error2 create_plan
+
+# Test that sizes in err message change if /home is not modelled.
+# Instead of modeled size of 20G + 20G snap should use kickstart values of 12G + 12G snap
+# So MBs used should be reduced by ((20G + 20G snap) - (12 + 12 snap)) = 16G
+litp remove -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/home
+let __disk_size_error3 --err_type ValidationError --err_message "The System Disks (1331200 MB) on node 'ms1' are not large enough for volume group requirement (1408600 MB). Volume group requirement = ((file systems including snapshots) 1408000 MB) + (LVM metadata 600 MB.)"
+assertError __disk_size_error3 create_plan
+
+
+#Update disk size to fit file systems and their snaps
+litp update -p /infrastructure/systems/s3/disks/d0 -o size='1400G'
+
+litp create_plan
+runPlanEnd
+
+litp create_snapshot
+litp remove_snapshot
+
+litp create_snapshot
+
+assertTask 0 _create_snapshot_cb ms /ms/system Success 'Create LVM deployment snapshot "L_lv_root_" on node "ms1"'

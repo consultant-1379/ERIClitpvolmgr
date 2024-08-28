@@ -1,0 +1,31 @@
+#Description:
+#    This test ensures that a file system mount point cannot clash with
+#    a Kickstarted file system.
+
+
+
+litp create -t system -p /infrastructure/systems/s3          -o system_name="ms"
+litp create -t disk   -p /infrastructure/systems/s3/disks/d0 -o name='hd0' size='58G' bootable='true' uuid="ATA_VBOX_HARDDISK_VB24150799-28e77304"
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/ms_sp
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1                      -o volume_group_name='vg_app'
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs1     -o type='ext4' mount_point='/' size='1G' snap_size='10'
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/physical_devices/pd0 -o device_name='hd0'
+
+litp inherit -p /ms/system          -s /infrastructure/systems/s3
+litp inherit -p /ms/storage_profile -s /infrastructure/storage/storage_profiles/ms_sp
+
+# Mock mcollective to return a fact name [hard coded] for a VG name
+add-plugins ../plugins/patch_mcollective_plugin
+
+assertError --err_vpath=/ms/storage_profile/volume_groups/vg1/file_systems/fs1 --err_message 'Create plan failed: mount_point "/" conflicts with MS Kickstarted LVM file-system. Reserved MS Kickstarted LVM mount points: /, /home, swap, /var, /var/tmp, /var/opt/rh, /var/lib/puppetdb, /var/log, /var/www, /software' create_plan
+
+litp update  -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs1 -o mount_point='/var'
+assertError --err_vpath=/ms/storage_profile/volume_groups/vg1/file_systems/fs1 --err_message 'Create plan failed: mount_point "/var" conflicts with MS Kickstarted LVM file-system. Reserved MS Kickstarted LVM mount points: /, /home, swap, /var, /var/tmp, /var/opt/rh, /var/lib/puppetdb, /var/log, /var/www, /software' create_plan
+
+litp update  -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs1 -o mount_point='/home'
+assertError --err_vpath=/ms/storage_profile/volume_groups/vg1/file_systems/fs1 --err_message 'Create plan failed: mount_point "/home" conflicts with MS Kickstarted LVM file-system. Reserved MS Kickstarted LVM mount points: /, /home, swap, /var, /var/tmp, /var/opt/rh, /var/lib/puppetdb, /var/log, /var/www, /software' create_plan
+
+litp update  -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs1 -o mount_point='swap' type='swap'
+assertError --err_vpath=/ms/storage_profile/volume_groups/vg1/file_systems/fs1 --err_message 'Create plan failed: mount_point "swap" conflicts with MS Kickstarted LVM file-system. Reserved MS Kickstarted LVM mount points: /, /home, swap, /var, /var/tmp, /var/opt/rh, /var/lib/puppetdb, /var/log, /var/www, /software' create_plan
+

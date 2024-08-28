@@ -1,0 +1,21 @@
+runLitpScript ./minimum_deployment.inc
+add-plugins ./plugins/patch_mcollective_plugin
+
+# LITPCDS-11003 - If device_name is updated, model is out of sync with the system
+# updated the PD device_name Property to be (updatable_rest=False, updatable_plugin=False)
+
+# model a new shared disk
+litp create -p /infrastructure/systems/system_1/disks/lun_1 -t disk -o name=lun_1 size=50G bootable=false uuid=300000002111111
+litp create -p /infrastructure/systems/system_2/disks/lun_1 -t disk -o name=lun_1 size=50G bootable=false uuid=300000002111111
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/sp1                                    -o volume_driver="vxvm"
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1                  -o volume_group_name="vg1"
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1/file_systems/fs1 -o type="vxfs" mount_point="/fs1_mnt" size="2G"
+
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1/physical_devices/lun_0 -o device_name="lun_0"
+
+litp create_plan
+litp run_plan
+
+# attempt to update an existing shared disk to be the device_name of the new disk
+assertError update -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1/physical_devices/lun_0 -o device_name="foo_disk"

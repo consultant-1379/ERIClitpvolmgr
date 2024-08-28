@@ -1,0 +1,115 @@
+<?xml version="1.0" ?><project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.ericsson.nms.litp</groupId>
+    <artifactId>ERIClitpvolmgr_CXP9030946</artifactId>
+    <packaging>rpm</packaging>
+    <name>[${project.parent.artifactId}] RPM module</name>
+    <description>LITP Volume Manager Plugin</description>
+
+    <parent>
+        <groupId>com.ericsson.nms.litp</groupId>
+        <artifactId>ERIClitpvolmgr</artifactId>
+        <version>2.15.1-SNAPSHOT</version>
+    </parent>
+
+    <properties>
+        <publish_artifact>true</publish_artifact>
+    <bom_version>RELEASE</bom_version></properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>rpm-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <inherited>true</inherited>
+                <configuration>
+                    <requires>
+                        <require>python &gt;= 2.7</require>
+                        <require>ERIClitpcore_CXP9030418 &gt;= ${litpcore_version}</require>
+                        <require>ERIClitpvolmgrapi_CXP9030947 &gt;= ${litpvolmgrapi_version}</require>
+                    </requires>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+    
+    <profiles>
+        <profile>
+            <id>current-dep</id>
+            <activation>
+                <property>
+                  <name>!UsingLatest</name>
+                </property>
+            </activation>
+        <properties>
+             <litpcore_version>2.2.1</litpcore_version>
+             <litpvolmgrapi_version>2.2.5</litpvolmgrapi_version>
+             <litpvcsapi_version>2.3.5</litpvcsapi_version>
+             <litpcbaapi_version>2.2.0</litpcbaapi_version>
+        </properties><dependencies>
+        <dependency>
+            <groupId>com.ericsson.nms.litp</groupId>
+            <artifactId>ERIClitpcore_CXP9030418</artifactId>
+            <version>${litpcore_version}</version>
+            <type>rpm</type>
+        </dependency><dependency>
+            <groupId>com.ericsson.nms.litp</groupId>
+            <artifactId>ERIClitpvolmgrapi_CXP9030947</artifactId>
+            <version>${litpvolmgrapi_version}</version>
+             <type>rpm</type>
+        </dependency><dependency>
+            <groupId>com.ericsson.nms.litp</groupId>
+            <artifactId>ERIClitpvcsapi_CXP9030871</artifactId>
+            <version>${litpvcsapi_version}</version>
+            <type>rpm</type>
+        </dependency><dependency>
+            <groupId>com.ericsson.nms.litp</groupId>
+            <artifactId>ERIClitpcbaapi_CXP9030830</artifactId>
+            <version>${litpcbaapi_version}</version>
+            <type>rpm</type>
+        </dependency></dependencies></profile>
+
+        <profile>
+            <id>latest-dep</id>
+              <properties>
+                  <UsingLatest>true</UsingLatest>
+              </properties>
+            <dependencyManagement>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.ericsson.litp</groupId>
+                        <artifactId>ci-bom</artifactId>
+                        <version>${bom_version}</version>
+                        <type>pom</type>
+                        <scope>import</scope>
+                    </dependency>
+                </dependencies>
+            </dependencyManagement>
+        <dependencies>
+        <dependency>
+            <groupId>com.ericsson.nms.litp</groupId>
+            <artifactId>ERIClitpcore_CXP9030418</artifactId>
+            <type>rpm</type>
+        </dependency>
+        <dependency>
+            <groupId>com.ericsson.nms.litp</groupId>
+            <artifactId>ERIClitpvolmgrapi_CXP9030947</artifactId>
+            <type>rpm</type>
+        </dependency>
+        <dependency>
+            <groupId>com.ericsson.nms.litp</groupId>
+            <artifactId>ERIClitpvcsapi_CXP9030871</artifactId>
+            <type>rpm</type>
+        </dependency>
+        <dependency>
+            <groupId>com.ericsson.nms.litp</groupId>
+            <artifactId>ERIClitpcbaapi_CXP9030830</artifactId>
+            <type>rpm</type>
+        </dependency>
+   </dependencies></profile>
+    </profiles></project>

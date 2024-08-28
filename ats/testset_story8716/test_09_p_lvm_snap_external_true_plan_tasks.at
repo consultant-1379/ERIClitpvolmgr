@@ -1,0 +1,32 @@
+#      Description:
+#          This test verifies if a ext4 filesystem has snap_external set to
+#          true no snapshot task is created on create_snapshot/remove_snapshot.
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+
+litp create_plan
+litp run_plan
+
+litp create_snapshot
+
+
+assertCallbackTask _create_snapshot_cb /deployments/d1/clusters/c1/nodes/node1/system
+
+litp remove_snapshot
+
+assertCallbackTask _remove_snapshot_cb /deployments/d1/clusters/c1/nodes/node1/system 
+
+
+litp update -p  /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg_1/file_systems/root -o snap_external=true
+
+litp create_snapshot
+assertNoCallbackTask _create_snapshot_cb /deployments/d1/clusters/c1/nodes/node1/system
+assertCallbackTask _create_snapshot_cb /deployments/d1/clusters/c1/nodes/node2/system
+
+litp update -p  /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg_1/file_systems/root -o snap_external=false
+
+litp remove_snapshot
+assertNoCallbackTask _remove_snapshot_cb /deployments/d1/clusters/c1/nodes/node1/system 
+assertCallbackTask _remove_snapshot_cb /deployments/d1/clusters/c1/nodes/node2/system 

@@ -1,0 +1,24 @@
+#Description:
+#   This test ensures that at least one of the vg_root disks must be
+#   bootable.
+
+
+litp create -t system -p /infrastructure/systems/s3          -o system_name="ms"
+litp create -t disk   -p /infrastructure/systems/s3/disks/d0 -o name='hd0' size='1200G' bootable='false' uuid="ATA_VBOX_HARDDISK_VB24150799-28e77304"
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/ms_sp
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1                      -o volume_group_name='vg_root'
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs1     -o type='ext4' mount_point='/jump' size='1G' snap_size='10'
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/physical_devices/pd0 -o device_name='hd0'
+
+litp inherit -p /ms/system          -s /infrastructure/systems/s3
+litp inherit -p /ms/storage_profile -s /infrastructure/storage/storage_profiles/ms_sp
+
+# Mock mcollective to return a fact name [hard coded] for a VG name
+add-plugins ../plugins/patch_mcollective_plugin
+
+assertError --err_message "The system disk modeled for 'vg_root' volume-group on MS '/ms' must have 'bootable' set to 'true'" create_plan
+
+litp update -p /infrastructure/systems/s3/disks/d0 -o bootable='true'
+litp create_plan
+litp run_plan

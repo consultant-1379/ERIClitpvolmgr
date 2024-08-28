@@ -1,0 +1,26 @@
+## This test verifies that if snap_size is set to 0 for a file system and
+## backup_snap_size is not set that no snapshot is created
+
+
+runLitpScript ../deploymentLV.inc
+
+litp create_plan
+litp run_plan
+
+
+# source snap_size ; destination backup_snap_size undefined
+
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o snap_size=0
+
+litp create_snapshot
+assertNoCallbackTask _create_snapshot_cb /deployments/d1/clusters/tmp/nodes/node43/system 
+
+litp create_snapshot -n test
+assertNoCallbackTask _create_snapshot_cb /deployments/d1/clusters/tmp/nodes/node43/system 
+
+litp remove_snapshot
+assertNoCallbackTask _remove_snapshot_cb /deployments/d1/clusters/tmp/nodes/node43/system
+
+litp remove_snapshot -n test
+assertNoCallbackTask _remove_snapshot_cb /deployments/d1/clusters/tmp/nodes/node43/system
+

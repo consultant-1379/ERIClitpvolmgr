@@ -1,0 +1,17 @@
+#Description:
+#    This test will verify that executing remove_snapshot when there are
+#    no snapshots generates an error message and no remove snapshot plan
+#    is created.
+#      1. Attempt to delete the non existent snapshot.
+#      2. Verify that the user is told that no snapshot currently exists
+#Result:
+#    Executing remove_snapshot when there are no snapshots generates an
+#    error message and no remove snapshot plan is created.
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+assertError  --err_type DoNothingPlanError --err_message 'no tasks were generated. No remove snapshot tasks added because Deployment Snapshot does not exist.'  remove_snapshot

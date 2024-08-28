@@ -1,0 +1,13 @@
+runLitpScript node_profile_base.inc
+
+
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name="hd0" size="512G" bootable=false uuid="6006016011602d00bc383819f679e311"
+litp create -t disk -p /infrastructure/systems/system1/disks/disk1 -o name="hd1" size="512G" bootable=false uuid="abcd"
+litp update -p /infrastructure/systems/system1/disks/disk0 -o bootable=true
+
+litp create_plan
+runPlanEnd
+
+#cannot update bootable property once it is applied
+assertError update -p /infrastructure/systems/system1/disks/disk0 -o bootable=false
+#assertError create_plan

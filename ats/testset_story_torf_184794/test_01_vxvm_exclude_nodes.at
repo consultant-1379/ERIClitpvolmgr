@@ -1,0 +1,20 @@
+runLitpScript ../deploymentVXVM.inc
+
+litp create_plan
+litp run_plan
+
+# Confirm a task is present, with data for both cluster nodes
+
+litp create_snapshot --name TORF-184794
+assertCallbackTask _create_vxvm_snapshot_cb /snapshots/TORF-184794 data_set.clusters.c1.nodes='{"node1": {"errors_list": [], "reachable": ""}, "node2": {"errors_list": [], "reachable": ""}}'
+
+litp remove_snapshot --name TORF-184794
+assertCallbackTask _remove_vxvm_snapshot_cb /snapshots/TORF-184794 data_set.clusters.c1.nodes='{"node1": {"errors_list": [], "reachable": ""}, "node2": {"errors_list": [], "reachable": ""}}'
+
+# Now confirm the task exists, with data for the one remaining node
+
+litp create_snapshot --name TORF-184794 --exclude_nodes 'node2'
+assertCallbackTask _create_vxvm_snapshot_cb /snapshots/TORF-184794 data_set.clusters.c1.nodes='{"node1": {"errors_list": [], "reachable": ""}}'
+
+litp remove_snapshot --name TORF-184794 --exclude_nodes 'node2'
+assertCallbackTask _remove_vxvm_snapshot_cb /snapshots/TORF-184794 data_set.clusters.c1.nodes='{"node1": {"errors_list": [], "reachable": ""}}'

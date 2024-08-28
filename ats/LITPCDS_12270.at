@@ -1,0 +1,61 @@
+# Initial setup
+runLitpScript node_profile_base.inc
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name="hd0" size="512G" bootable=true uuid="6006016011602d00bc383819f679e311"
+litp create_plan
+litp run_plan
+
+###################################################################################################################################################
+# Tests for 12270
+###################################################################################################################################################
+
+###################################################################################################################################################
+# Create a file system without mount point
+###################################################################################################################################################
+
+litp create -t file-system -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/12270 -o size=20M
+litp create_plan
+litp run_plan
+assertNumberConfigTasks node1 1
+assertState -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/12270 Applied
+
+###################################################################################################################################################
+# Add mount point
+###################################################################################################################################################
+
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/12270 -o mount_point=/12270
+litp create_plan
+litp run_plan
+assertNumberConfigTasks node1 2
+assertState -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/12270 Applied
+
+###################################################################################################################################################
+# Replace mount point
+###################################################################################################################################################
+
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/12270 -o mount_point=/12270_2
+litp create_plan
+litp run_plan
+assertNumberConfigTasks node1 3
+assertState -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/12270 Applied
+
+###################################################################################################################################################
+# Revert to original mount point
+###################################################################################################################################################
+
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/12270 -o mount_point=/12270
+litp create_plan
+litp run_plan
+assertNumberConfigTasks node1 3
+assertState -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/12270 Applied
+
+###################################################################################################################################################
+# Remove mount point
+###################################################################################################################################################
+
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/12270 -d mount_point
+litp create_plan
+litp run_plan
+assertNumberConfigTasks node1 1
+assertState -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/12270 Applied
+
+

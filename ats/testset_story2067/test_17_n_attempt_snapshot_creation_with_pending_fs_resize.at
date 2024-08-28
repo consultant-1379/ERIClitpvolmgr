@@ -1,0 +1,17 @@
+#    Description:
+#        Check to ensure that it is not possible to create a
+#        snapshot while a filesystem size change is pending.
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o size=8G
+
+
+let __err_a --err_type ValidationError --err_message 'Create snapshot failed: A snapshot may not be created while a file system size update is pending.' --err_vpath /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg_1/file_systems/root
+let __err_b --err_type ValidationError --err_message 'Create snapshot failed: A snapshot may not be created while a file system size update is pending.' --err_vpath /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_1/file_systems/root
+
+assertError __err_a __err_b  create_snapshot

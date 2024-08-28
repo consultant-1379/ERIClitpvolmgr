@@ -1,0 +1,28 @@
+## Verify that when a user runs "restore_snapshot" and a cluster
+## referenced in a dependency_list is removed, then nodes
+## restart according to the sequence defined by the dependency
+## graph at create snapshot time
+
+runLitpScript ../deploymentCluster.inc 
+add-plugins ../plugins/patch_mcollective_plugin
+
+
+litp create -p /deployments/d1/clusters/c4 -t vcs-cluster -o cluster_type=sfha low_prio_net=mgmt llt_nets=hb1,hb2 cluster_id=1046 
+
+litp update -p /deployments/d1/clusters/c1 -o dependency_list=c2 
+litp update -p /deployments/d1/clusters/c2 -o dependency_list=c3
+litp update -p /deployments/d1/clusters/c3 -o dependency_list=c4
+
+litp create_snapshot
+
+litp remove -p /deployments/d1/clusters/c4
+litp restore_snapshot
+
+let __restart_c1 CallbackTask _restart_node /deployments/d1/clusters/c1
+let __restart_c2 CallbackTask _restart_node /deployments/d1/clusters/c2
+let __restart_c3 CallbackTask _restart_node /deployments/d1/clusters/c3
+
+assertTaskBeforeTask __restart_c3 __restart_c2
+assertTaskBeforeTask __restart_c2 __restart_c1
+assertNoCallbackTask _restart_node /deployments/d1/clusters/c4
+

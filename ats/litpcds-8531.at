@@ -1,0 +1,9 @@
+runLitpScript ./minimum_deployment.inc
+add-plugins ./plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+litp create_snapshot
+# mock mcollective to return snapshots for the 2 nodes but none for the ms
+ add-plugins ./plugins/litpcds_8531
+assertError --err_type InternalServerError --err_message 'There are missing snapshots for MS, cannot restore.' restore_snapshot

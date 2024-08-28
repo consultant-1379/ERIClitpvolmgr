@@ -1,0 +1,22 @@
+## Verify that if two cluster are set to depend on the same cluster
+## at snapshot creation time, when a user run "restore_snapshot" the
+## nodes restart according with the derived dependency graph
+
+
+runLitpScript ../deploymentCluster.inc 
+add-plugins ../plugins/patch_mcollective_plugin
+
+
+litp update -p /deployments/d1/clusters/c1 -o dependency_list=c3 
+litp update -p /deployments/d1/clusters/c2 -o dependency_list=c3
+
+litp create_snapshot
+
+litp restore_snapshot
+
+let __restart_c1 CallbackTask _restart_node /deployments/d1/clusters/c1
+let __restart_c2 CallbackTask _restart_node /deployments/d1/clusters/c2
+let __restart_c3 CallbackTask _restart_node /deployments/d1/clusters/c3
+
+assertTaskBeforeTask __restart_c3 __restart_c1
+assertTaskBeforeTask __restart_c3 __restart_c2

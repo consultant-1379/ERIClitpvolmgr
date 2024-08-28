@@ -1,0 +1,20 @@
+#Description:
+#    This test ensures root volume group is on a bootable disk
+#
+#Actions:
+#    1. Define / file system on a non-bootable system disk
+#    2. run create_plan
+#    2. Check validation error messages
+#
+#Result:
+#    Validation error: For Node 'mn99' the root-vg must be created on
+#    a bootable disk
+
+
+runLitpScript ../deploymentLV.inc
+
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/physical_devices/internal  -o device_name="hd1"
+
+let __err_a --err_type ValidationError --err_message "Create plan failed: For node 'mn99' the vg-root must be created on disks that include one bootable disk" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg0
+
+assertError __err_a  create_plan

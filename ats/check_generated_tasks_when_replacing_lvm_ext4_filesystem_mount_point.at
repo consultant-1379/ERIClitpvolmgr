@@ -1,0 +1,86 @@
+##############
+# This AT is for development testing
+#
+# Goal: check ConfigTasks generated when replacing
+#       mount point on a lvm ext4 file system.
+#
+#
+# Scenario:
+#       1. Inherited from cluster_common.atlib
+#       2. Validate Scenario
+#
+# Actions:
+#       1. Replace Mount Point: from at_test1
+#           From: '/at/test1' To: '/new/mp/test1'
+#
+#       2. Replace Mount Point: from at_test2
+#           From: '/at/test2' To: '/new/mp/test2'
+#
+#       3. Replace Mount Point: from at_test3
+#           From: '/at/test3' To: '/new/mp/test3'
+#
+
+####
+# Bulding the scenario
+#
+runLitpScript cluster_common.atlib
+
+####
+# Validate scenario
+#
+assertNoPlan
+litp create_plan
+assertPlanState initial
+assertProperty /deployments/test/clusters/cluster1/nodes/node1/storage_profile -o volume_driver="lvm"
+assertProperty /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/root -o type="ext4"
+assertState -p /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1 Initial
+litp run_plan
+assertPlanState successful
+
+assertNumberConfigTasks mn1 10
+
+assertConfigTask mn1 lvm::volume vg1_root /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/root ensure='present' fstype='ext4' pv='["$::disk_c2996df73ab69d1577ea390fb2c8_part3_dev"]' vg='vg_root' size='10G'
+
+assertConfigTask mn1 lvm::volume vg1_at_test1 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test1 ensure='present' fstype='ext4' pv='["$::disk_c2996df73ab69d1577ea390fb2c8_part3_dev"]' vg='vg_root' size='1G'
+assertConfigTask mn1 lvm::volume vg1_at_test2 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test2 ensure='present' fstype='ext4' pv='["$::disk_c2996df73ab69d1577ea390fb2c8_part3_dev"]' vg='vg_root' size='2G'
+assertConfigTask mn1 lvm::volume vg1_at_test3 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test3 ensure='present' fstype='ext4' pv='["$::disk_c2996df73ab69d1577ea390fb2c8_part3_dev"]' vg='vg_root' size='3G'
+
+assertConfigTask mn1 volmgr::create_mount_path /at/test1 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test1 mount_point='/at/test1'
+assertConfigTask mn1 volmgr::create_mount_path /at/test2 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test2 mount_point='/at/test2'
+assertConfigTask mn1 volmgr::create_mount_path /at/test3 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test3 mount_point='/at/test3'
+
+assertConfigTask mn1 mount /at/test1 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test1 atboot='true' ensure='mounted' pass='2' device='/dev/vg_root/vg1_at_test1' require='[{"type": "Lvm::Volume", "value": "vg1_at_test1"}]' options='defaults,x-systemd.device-timeout=300' fstype='ext4'
+assertConfigTask mn1 mount /at/test2 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test2 atboot='true' ensure='mounted' pass='2' device='/dev/vg_root/vg1_at_test2' require='[{"type": "Lvm::Volume", "value": "vg1_at_test2"}]' options='defaults,x-systemd.device-timeout=300' fstype='ext4'
+assertConfigTask mn1 mount /at/test3 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test3 atboot='true' ensure='mounted' pass='2' device='/dev/vg_root/vg1_at_test3' require='[{"type": "Lvm::Volume", "value": "vg1_at_test3"}]' options='defaults,x-systemd.device-timeout=300' fstype='ext4'
+
+####
+# Actions
+#
+
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/at_test1 -o mount_point="/new/mp/test1"
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/at_test2 -o mount_point="/new/mp/test2"
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/at_test3 -o mount_point="/new/mp/test3"
+
+litp create_plan
+litp run_plan
+assertPlanState successful
+
+#####
+# Goal
+#
+assertNumberConfigTasks mn1 9
+
+# Check at_test1
+assertConfigTask mn1 mount /at/test1 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test1 device='/dev/vg_root/vg1_at_test1' ensure='absent' fstype='ext4'
+assertConfigTask mn1 volmgr::create_mount_path /new/mp/test1 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test1 mount_point='/new/mp/test1'
+assertConfigTask mn1 mount /new/mp/test1 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test1 atboot='true' ensure='mounted' pass='2' device='/dev/vg_root/vg1_at_test1' require='[{"type": "Lvm::Volume", "value": "vg1_at_test1"}]' options='defaults,x-systemd.device-timeout=300' fstype='ext4'
+
+# Check at_test2
+assertConfigTask mn1 mount /at/test2 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test2 device='/dev/vg_root/vg1_at_test2' ensure='absent' fstype='ext4'
+assertConfigTask mn1 volmgr::create_mount_path /new/mp/test2 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test2 mount_point='/new/mp/test2'
+assertConfigTask mn1 mount /new/mp/test2 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test2 atboot='true' ensure='mounted' pass='2' device='/dev/vg_root/vg1_at_test2' require='[{"type": "Lvm::Volume", "value": "vg1_at_test2"}]' options='defaults,x-systemd.device-timeout=300' fstype='ext4'
+
+# Check at_test3
+assertConfigTask mn1 mount /at/test3 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test3 device='/dev/vg_root/vg1_at_test3' ensure='absent' fstype='ext4'
+assertConfigTask mn1 volmgr::create_mount_path /new/mp/test3 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test3 mount_point='/new/mp/test3'
+assertConfigTask mn1 mount /new/mp/test3 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test3 atboot='true' ensure='mounted' pass='2' device='/dev/vg_root/vg1_at_test3' require='[{"type": "Lvm::Volume", "value": "vg1_at_test3"}]' options='defaults,x-systemd.device-timeout=300' fstype='ext4'

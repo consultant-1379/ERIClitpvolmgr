@@ -1,0 +1,24 @@
+#Description:
+#    This test checks that a node file systems allocate space
+#    which is multiple of 4M
+#
+#Actions:
+#    1. Define system disk
+#    2. Create volume group
+#    3. Allocate file system with 7M size
+#    4. run create_plan
+#    5. Check validation error messages
+#
+#Result:
+#    Validation error message: File System size '7M' is not an exact
+#    multiple of the LVM Logical Extent size ('4')
+
+
+runLitpScript ../deploymentLV.inc
+
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/swap -o size='7M' 
+
+let __err_a --err_type ValidationError --err_message "Create plan failed: File System size '7M' on 'mn99' is not an exact multiple of the LVM Logical Extent size ('4MB')" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg0/file_systems/swap
+let __err_b --err_type ValidationError --err_message "Create plan failed: System Disk uuid 'ee7cf0a0-1922-401b-a1ae-6ec9261484c0' is not unique" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/system/disks/disk1
+
+assertError __err_a  create_plan

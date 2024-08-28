@@ -1,0 +1,18 @@
+# 12. Verify that no task for removing GRUB is created when remove_snapshot -n is run.
+
+runLitpScript ../minimum_deployment.inc
+
+# mock mcollective to return like there are volumes with named snapshots
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+litp create_snapshot -n backup
+
+addMockDirectory  /opt/ericsson/nms/litp/etc/extensions ../../target/deps/opt/ericsson/nms/litp/etc/extensions
+litp remove_snapshot -n backup
+# no tasks for remove_grub in any of the nodes
+# the other tasks use _delete_ss_rpc_task instead of _base_rpc_task, so it should be fine to identify grub tasks
+assertNoCallbackTask _base_rpc_task /ms/system
+assertNoCallbackTask _base_rpc_task /deployments/d1/clusters/c1/nodes/node2/system
+assertNoCallbackTask _base_rpc_task /deployments/d1/clusters/c1/nodes/node1/system

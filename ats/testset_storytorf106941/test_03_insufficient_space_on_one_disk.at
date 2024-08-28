@@ -1,0 +1,26 @@
+# Verify that if I increase the size of one disk and the size of a file-system to greater than the original size, I get a validation error
+#
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+runPlanEnd
+
+litp create -p /infrastructure/systems/system_1/disks/test_disk -t disk -o name='hd_test' size='19G' bootable='false' uuid='ATA_VBOX_HARDDISK_VB1d2c0e34-test'
+litp create -p /infrastructure/systems/system_2/disks/test_disk -t disk -o name='hd_test' size='19G' bootable='false' uuid='ATA_VBOX_HARDDISK_VB1d2c0e35-test'
+
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test -t volume-group -o volume_group_name="vg_test" 
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test/file_systems/fs_test -t file-system -o type='ext4' mount_point='/test' size=8G
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test/physical_devices/test_dev -t physical-device -o device_name=hd_test 
+
+litp create_plan
+runPlanEnd
+
+litp update -p /infrastructure/systems/system_1/disks/test_disk -o size='30G'
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test/file_systems/fs_test -o size=12G
+
+let __err_1 --err_type ValidationError --err_message "Create plan failed: The System Disks (19456 MB) on node 'node2' are not large enough for volume group requirement (24676 MB). Volume group requirement = ((file systems including snapshots) 24576 MB) + (LVM metadata 100 MB.)" --err_vpath "/deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_test"
+assertError __err_1 create_plan
+
+

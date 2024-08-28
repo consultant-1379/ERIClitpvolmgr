@@ -1,0 +1,33 @@
+add-extensions torf_191381_model_extension
+runLitpScript torf_191381_test_setup.inc
+
+litp create -t torf_191381_disk -p /deployments/d1/clusters/c1/fencing_disks/d0 -o name=fen0 size=70G bootable=false uuid=30000000fc85c927
+
+litp create_plan
+litp run_plan
+
+assertState -p /deployments/d1/clusters/c1/fencing_disks/d0 Applied
+
+litp update -p /deployments/d1/clusters/c1/fencing_disks/d0 -o uuid=30000000fc85c920
+
+assertState -p /deployments/d1/clusters/c1/fencing_disks/d0 Updated
+
+litp create_plan
+
+assertCallbackTask _vxvm_disk_uuid_update_cb /deployments/d1/clusters/c1/fencing_disks/d0
+
+failCallbackTask _vxvm_disk_uuid_update_cb /deployments/d1/clusters/c1/fencing_disks/d0
+
+litp run_plan
+
+assertAppliedPropertiesDeterminable -p /deployments/d1/clusters/c1/fencing_disks/d0 False
+
+litp create_plan
+
+assertCallbackTask _vxvm_disk_uuid_update_cb /deployments/d1/clusters/c1/fencing_disks/d0
+
+assertState -p /deployments/d1/clusters/c1/fencing_disks/d0 Updated
+
+litp run_plan
+
+assertState -p /deployments/d1/clusters/c1/fencing_disks/d0 Applied

@@ -1,0 +1,25 @@
+#Description:
+#    Verify that the user can't create vxfs volumes on
+#    smaller disk
+#Actions:
+#    1. Create storage profile with volume_driver=vxvm
+#    2. Create volume group.
+#    3. Create filesystem bigger then disk size.
+#    4. Ensure that validation error is raised.
+#Results:
+#    Validation error raised
+
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp create -p /infrastructure/storage/storage_profiles/sp2545 -t storage-profile -o volume_driver=vxvm 
+litp create -p /infrastructure/storage/storage_profiles/sp2545/volume_groups/vxvm_vol_grp -t volume-group -o volume_group_name='vxvm_vol_grp'
+litp create -p /infrastructure/storage/storage_profiles/sp2545/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -t file-system -o type='vxfs' size='40G' mount_point='/mp_2545_4'
+litp create -p /infrastructure/storage/storage_profiles/sp2545/volume_groups/vxvm_vol_grp/physical_devices/disk_1 -t physical-device -o device_name=lun_0
+litp inherit -p /deployments/d1/clusters/c1/storage_profile/sp2545 -s /infrastructure/storage/storage_profiles/sp2545
+
+assertError --err_message "is not large enough for volume group total requirement" --err_type ValidationError create_plan

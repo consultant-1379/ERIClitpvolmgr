@@ -1,0 +1,38 @@
+# litpcds-12785: LITP would not take nodes in for_removal state into account for snapshotting until now. Possibly this bug exists since snapshots were moved out of the deployment plan.
+
+add-plugins ./plugins/patch_mcollective_plugin
+runLitpScript ./minimum_deployment.inc
+
+litp create_plan
+litp run_plan
+
+litp remove -p /deployments/d1/clusters/c1/nodes/node1
+litp create_snapshot
+#show show_plan
+
+# 1: there are tasks to create snapshots in both nodes (particularly in the one in for_removal state)
+assertTask 1 _base_rpc_task node1 /deployments/d1/clusters/c1/nodes/node1/system Success 'Save grub on node "node1"'
+assertTask 1 _base_rpc_task node2 /deployments/d1/clusters/c1/nodes/node2/system Success 'Save grub on node "node2"'
+assertCallbackTask _create_snapshot_cb  /deployments/d1/clusters/c1/nodes/node2/system
+assertCallbackTask _create_snapshot_cb  /deployments/d1/clusters/c1/nodes/node1/system
+assertTask 0 _base_rpc_task ms /ms/system Success 'Save grub on node "ms1"'
+
+
+litp remove_snapshot
+
+# 2: same thing for remove_snapshot
+assertTask 0 _check_remove_nodes_reachable_cb ms1 /snapshots/snapshot Success 'Check peer nodes "node1" and "node2" are reachable'
+assertCallbackTask _remove_snapshot_cb  /deployments/d1/clusters/c1/nodes/node2/system
+assertCallbackTask _remove_snapshot_cb  /deployments/d1/clusters/c1/nodes/node1/system 
+assertCallbackTask _remove_grub_cb /deployments/d1/clusters/c1/nodes/node2/system 
+assertCallbackTask _remove_grub_cb /deployments/d1/clusters/c1/nodes/node1/system 
+
+litp create_snapshot
+litp restore_snapshot
+
+# 3: ...and same thing for restore_snapshot
+assertTask 0 _check_restore_nodes_reachable_and_snaps_exist_cb ms1 /snapshots/snapshot Success 'Check peer node(s) "node1" and "node2" are reachable with all LVM snapshots present'
+assertCallbackTask _restore_ss_rpc_task  /deployments/d1/clusters/c1/nodes/node2/system
+assertCallbackTask _restore_ss_rpc_task  /deployments/d1/clusters/c1/nodes/node1/system
+assertTask 2 _base_rpc_task node2 /deployments/d1/clusters/c1/nodes/node2/system Success 'Restore grub copy on node "node2"'
+assertTask 2 _base_rpc_task node1 /deployments/d1/clusters/c1/nodes/node1/system Success 'Restore grub copy on node "node1"'

@@ -1,0 +1,24 @@
+runLitpScript ../minimum_deployment.inc
+
+litp remove -p /deployments/d1/clusters/c1/nodes/node1/storage_profile
+litp remove -p /deployments/d1/clusters/c1/nodes/node2/storage_profile
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/sp1
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1                      -o volume_group_name='root_vg'
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1/file_systems/fs1     -o type='ext4' mount_point='/' size='10G' snap_size='5'
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1/file_systems/fs2     -o type='swap' mount_point='swap' size='1G'
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1/file_systems/fs3     -o type='ext4' mount_point='/home' size='4G' snap_size='0'
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1/physical_devices/pd0 -o device_name='hd0'
+
+litp inherit -p /deployments/d1/clusters/c1/nodes/node1/storage_profile -s /infrastructure/storage/storage_profiles/sp1
+litp inherit -p /deployments/d1/clusters/c1/nodes/node2/storage_profile -s /infrastructure/storage/storage_profiles/sp1
+
+litp create_plan
+assertConfigTask node1 mount /home /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/fs3 atboot='true' ensure='mounted' pass='2' device='/dev/root_vg/vg1_fs3' require='[{"type": "Lvm::Volume", "value": "vg1_fs3"}]' options='defaults,x-systemd.device-timeout=300' fstype='ext4'
+
+litp run_plan
+
+
+litp update -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1/file_systems/fs3 -o fsck_pass=0
+litp create_plan
+assertConfigTask node1 mount /home /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/fs3 atboot='true' ensure='mounted' pass='0' device='/dev/root_vg/vg1_fs3' require='[{"type": "Lvm::Volume", "value": "vg1_fs3"}]' options='defaults,x-systemd.device-timeout=300' fstype='ext4'

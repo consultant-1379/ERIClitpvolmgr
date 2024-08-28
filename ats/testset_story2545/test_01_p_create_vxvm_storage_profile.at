@@ -1,0 +1,15 @@
+#Description:
+#    Verify the user can create a storage profile
+#Actions:
+#    1. Run command to create storage profile.
+#    2. Assert that there are no errors returned.
+#Results:
+#    No error returned
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp create -p /infrastructure/storage/storage_profiles/sp2545 -t storage-profile -o volume_driver=vxvm

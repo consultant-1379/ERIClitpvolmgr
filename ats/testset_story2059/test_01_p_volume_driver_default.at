@@ -1,0 +1,16 @@
+#Try to create a system with more than one bootable disks.
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create -p /infrastructure/systems/system_2059 -t system -o system_name='system_2059'
+
+litp create -p /infrastructure/systems/system_2059/disks/disk-2059-0 -t disk -o name='disk-2059-0' size='1G' bootable='true' uuid='2059_0'  
+
+litp create -p /infrastructure/systems/system_2059/disks/disk-2059-1 -t disk -o name='disk-2059-1' size='1G' bootable='true' uuid='2059_1'  
+
+litp create -p /deployments/d1/clusters/c1/nodes/node_2059 -t node -o hostname='node2059' 
+
+litp inherit -p /deployments/d1/clusters/c1/nodes/node_2059/system -s /infrastructure/systems/system_2059 
+
+assertError --err_message "Exactly one System Disk should have 'bootable' Property set to 'true'" create_plan

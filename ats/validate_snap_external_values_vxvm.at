@@ -1,0 +1,96 @@
+
+# Boilerplate (node complains if they don't have a profile) 
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/profile_1
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg -o volume_group_name="root_vg"
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/root -o type="ext4" mount_point="/" size="100G"
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/swap -o type="swap" mount_point="swap" size="32G"
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/physical_devices/internal -o device_name=hd0
+
+# Two nodes
+litp create -t system -p /infrastructure/systems/system1 -o system_name="AT_node"
+litp create -t system -p /infrastructure/systems/system2 -o system_name="AT_node2"
+litp create -t disk   -p /infrastructure/systems/system1/disks/disk0 -o name=hd0 size=270G bootable=true uuid="ABCD"
+litp create -t disk   -p /infrastructure/systems/system2/disks/disk0 -o name=hd0 size=270G bootable=true uuid="ATA_VBOX_HARDDISK_VBe57c4204-586a04e3"
+litp create -t disk   -p /infrastructure/systems/system1/disks/disk3 -o name=hd3 size=270G bootable=true uuid="VX1" bootable=false
+litp create -t disk   -p /infrastructure/systems/system2/disks/disk3 -o name=hd3 size=270G bootable=true uuid="VX1" bootable=false
+
+# VxVM profile
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/profile_2 -o volume_driver=vxvm
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg -o volume_group_name="vx_vg"
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o type="vxfs" mount_point="/vx" size="100G" snap_external='true'
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/physical_devices/disk_0 -o device_name=hd3
+
+# Deployment
+litp create -t os-profile        -p /software/profiles/osprofile1 -o name="node-iso" version="rhel6" arch="x86_64" breed="linux" path="/cobbler/ks_mirror/node-iso-x86_64"
+litp create -t deployment        -p /deployments/at
+litp create -t vcs-cluster       -p /deployments/at/clusters/cluster1 -o cluster_type=sfha cluster_id=1 low_prio_net=mgmt llt_nets=heartbeat1,heartbeat2
+litp create -t node              -p /deployments/at/clusters/cluster1/nodes/node1 -o hostname="node1"
+litp create -t network-interface -p /deployments/at/clusters/cluster1/nodes/node1/network_interfaces/ip1 -o network_name='bla'
+litp inherit                     -p /deployments/at/clusters/cluster1/nodes/node1/system -s /infrastructure/systems/system1
+litp inherit                     -p /deployments/at/clusters/cluster1/nodes/node1/os -s /software/profiles/osprofile1
+litp inherit                     -p /deployments/at/clusters/cluster1/nodes/node1/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+litp create -t node              -p /deployments/at/clusters/cluster1/nodes/node2 -o hostname="node2"
+litp create -t network-interface -p /deployments/at/clusters/cluster1/nodes/node2/network_interfaces/ip1 -o network_name='bla'
+litp inherit                     -p /deployments/at/clusters/cluster1/nodes/node2/system -s /infrastructure/systems/system2
+litp inherit                     -p /deployments/at/clusters/cluster1/nodes/node2/os -s /software/profiles/osprofile1
+litp inherit                     -p /deployments/at/clusters/cluster1/nodes/node2/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+
+# Add VxVM profile to cluster
+litp inherit                     -p /deployments/at/clusters/cluster1/storage_profile/vxprof -s /infrastructure/storage/storage_profiles/profile_2
+
+
+## LITPCDS-8716: check for valid/invalid values
+
+# Check 'true' set
+litp create_plan
+assertProperty /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external=true
+
+# Check update to 'false'
+litp update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external=false
+litp create_plan
+assertProperty /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external=false
+
+# Check invalid values
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='True'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='False'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external=' '
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external=''
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='!'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='$'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='%'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='^'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='*'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='('
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external=')'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='-'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='_'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='='
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='+'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='`'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='|'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='\'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external=','
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='.'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='<'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='>'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='/'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='?'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external=';'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external=':'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='@'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external="\#"
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='~'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='['
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external=']'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='{'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='}'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='0'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='1'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='2'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='3'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='4'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='5'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='6'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external=' 7'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='8'
+assertError update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vx_vg/file_systems/vx -o snap_external='9'

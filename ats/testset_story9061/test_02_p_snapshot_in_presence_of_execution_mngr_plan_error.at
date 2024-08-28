@@ -1,0 +1,27 @@
+#Description:
+#Given a model manager plan (create_plan) with non snapshot related
+#validation errors when I run create_snapshot, and remove_snapshot
+#the corresponding snapshot tasks are executed
+#successfully.
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+# Size of /infrastructure/systems/system_1/disks/disk_0 is 28G
+
+litp create_plan
+litp run_plan
+
+#make sure create_plan fails
+litp update -p  /infrastructure/systems/system_1/disks/disk_0 -o size=20G
+
+let __decrease_not_allowed_err --err_type ValidationError --err_message 'Create plan failed: Decreasing the "size" property of disk "hd0" associated with LVM storage-profile on peer node "node1" is not supported'
+
+assertError __decrease_not_allowed_err create_plan
+
+litp create_snapshot
+litp remove_snapshot
+
+assertError __decrease_not_allowed_err create_plan
+
+assertError --err_type ValidationError --errors_length 1 create_snapshot -n 0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789

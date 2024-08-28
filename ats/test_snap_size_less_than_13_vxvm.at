@@ -1,0 +1,34 @@
+runLitpScript ./minimum_deployment.inc
+add-plugins ./plugins/patch_mcollective_plugin
+
+
+litp create -p /infrastructure/storage/storage_profiles/sp2481 -t storage-profile -o volume_driver=vxvm
+litp create -p /infrastructure/storage/storage_profiles/sp2481/volume_groups/vxvm_vol_grp -t volume-group -o volume_group_name='vxvm_vol_grp'
+litp create -p /infrastructure/storage/storage_profiles/sp2481/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -t file-system -o type='vxfs' size='600M' mount_point='/mp_2481_4' snap_size=3 backup_snap_size=3
+litp create -p /infrastructure/storage/storage_profiles/sp2481/volume_groups/vxvm_vol_grp/physical_devices/disk_1 -t physical-device -o device_name=lun_0
+litp inherit -p /deployments/d1/clusters/c1/storage_profile/sp2481 -s /infrastructure/storage/storage_profiles/sp2481
+
+litp create_plan
+litp run_plan
+
+litp create_snapshot
+
+litp update -p /deployments/d1/clusters/c1/storage_profile/sp2481/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size=0
+
+assertError  --err_type ValidationError  --errors_length 1  --err_message 'Invalid "snap_size" value. The "size" and "snap_size" properties on the "file-system" \
+would combine to result in a snapshot cache object size less than the minimum of 13M' \
+update -p /deployments/d1/clusters/c1/storage_profile/sp2481/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size=1
+
+litp update -p /deployments/d1/clusters/c1/storage_profile/sp2481/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=0
+
+assertError  --err_type ValidationError  --errors_length 1  --err_message 'Invalid "backup_snap_size" value. The "size" and "backup_snap_size" properties on the "file-system" \
+would combine to result in a snapshot cache object size less than the minimum of 13M' \
+update -p /deployments/d1/clusters/c1/storage_profile/sp2481/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=1
+
+let __err_1 --err_type ValidationError --err_message 'Invalid "snap_size" value. The "size" and "snap_size" properties on the "file-system" \
+would combine to result in a snapshot cache object size less than the minimum of 13M' \
+
+let __err_2 --err_type ValidationError --err_message  'Invalid "backup_snap_size" value. The "size" and "backup_snap_size" properties on the "file-system" \
+would combine to result in a snapshot cache object size less than the minimum of 13M' \
+
+assertError __err_1 __err_2  --errors_length 2 update -p /deployments/d1/clusters/c1/storage_profile/sp2481/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size=1 -o backup_snap_size=1

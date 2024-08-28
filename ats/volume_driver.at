@@ -1,0 +1,30 @@
+runLitpScript node_profile_base.inc
+
+litp create -t system -p /infrastructure/systems/system2 -o system_name="AT_node2"
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name=hd0 size=270G bootable=true uuid="ABCD"
+litp create -t disk -p /infrastructure/systems/system2/disks/disk0 -o name=hd0 size=270G bootable=true uuid="ATA_VBOX_HARDDISK_VBe57c4204-586a04e3"
+litp create -t node -p /deployments/at/clusters/cluster1/nodes/node2 -o hostname="node2"
+litp create -t network-interface -p /deployments/at/clusters/cluster1/nodes/node2/network_interfaces/ip1 -o network_name='bla'
+litp inherit -p /deployments/at/clusters/cluster1/nodes/node2/system -s /infrastructure/systems/system2
+litp inherit -p /deployments/at/clusters/cluster1/nodes/node2/os -s /software/profiles/osprofile1
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/prof1 -o volume_driver='vxvm'
+litp create -t volume-group -p /infrastructure/storage/storage_profiles/prof1/volume_groups/vg1 -o volume_group_name="root_vg"
+litp create -t file-system -p /infrastructure/storage/storage_profiles/prof1/volume_groups/vg1/file_systems/swap -o type=vxfs mount_point=/test size=2G
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/prof1/volume_groups/vg1/physical_devices/internal -o device_name=hd0
+assertError create_plan
+
+litp remove -p /infrastructure/storage/storage_profiles/prof1/
+assertError create -t volume-group -p /infrastructure/storage/storage_profiles/prof1/volume_groups/vg1 -o volume_group_name="root_vg" volume_driver='lvm'
+
+assertError create -t storage-profile -p /infrastructure/storage/storage_profiles/prof1 -o volume_driver='abcvxvm'
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/prof2 -o volume_driver='lvm'
+
+litp create -t volume-group -p /infrastructure/storage/storage_profiles/prof2/volume_groups/vg2 -o volume_group_name="root_vg"
+litp create -t file-system -p /infrastructure/storage/storage_profiles/prof2/volume_groups/vg2/file_systems/root -o type=ext4 mount_point=/ size=5G
+litp create -t file-system -p /infrastructure/storage/storage_profiles/prof2/volume_groups/vg2/file_systems/swap -o type=swap mount_point=swap size=2G
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/prof2/volume_groups/vg2/physical_devices/internal -o device_name=hd0
+litp inherit -p /deployments/at/clusters/cluster1/nodes/node2/storage_profile -s /infrastructure/storage/storage_profiles/prof2
+
+litp create_plan

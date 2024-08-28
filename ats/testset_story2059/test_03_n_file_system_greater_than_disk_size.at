@@ -1,0 +1,30 @@
+#Create an storage profile greater than the sum of the sizes of underlying disks.
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create -p /infrastructure/systems/system_2059 -t system -o system_name='system_2059'
+
+litp create -p /infrastructure/systems/system_2059/disks/2059_1 -t disk -o name='2059_1' size='1G' bootable='true' uuid='2059_1'
+
+litp create -p /infrastructure/systems/system_2059/disks/2059_2 -t disk -o name='2059_2' size='2G' bootable='false' uuid='2059_2'
+
+litp create -p /infrastructure/storage/storage_profiles/storage_2059 -t storage-profile
+
+litp create -p /infrastructure/storage/storage_profiles/storage_2059/volume_groups/vg_2059 -t volume-group -o volume_group_name='vg_2059'
+
+litp create -p /infrastructure/storage/storage_profiles/storage_2059/volume_groups/vg_2059/file_systems/fs2059 -t file-system -o type='ext4' mount_point='/2055' size=10G
+
+litp create -p /infrastructure/storage/storage_profiles/storage_2059/volume_groups/vg_2059/physical_devices/internal1 -t physical-device -o device_name='2059_1'
+
+litp create -p /infrastructure/storage/storage_profiles/storage_2059/volume_groups/vg_2059/physical_devices/internal2 -t physical-device -o device_name='2059_2'
+
+litp create -p /deployments/d1/clusters/c1/nodes/node_2059 -t node -o hostname='node2059'
+
+litp inherit -p /deployments/d1/clusters/c1/nodes/node_2059/system -s /infrastructure/systems/system_2059
+
+litp inherit -p /deployments/d1/clusters/c1/nodes/node_2059/storage_profile -s /infrastructure/storage/storage_profiles/storage_2059
+
+litp inherit -p /deployments/d1/clusters/c1/nodes/node_2059/os -s /software/profiles/rhel_6_4
+
+assertError --err_message "on node 'node2059' are not large enough for volume group requirement" create_plan

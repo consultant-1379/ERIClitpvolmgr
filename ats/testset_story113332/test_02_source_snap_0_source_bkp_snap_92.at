@@ -1,0 +1,29 @@
+## This test verifies that if the backup_snap_size is set to 100 for a file 
+## system and the snap_size is set to 0 there will only be named backup
+## snapshots for the file system
+
+
+runLitpScript ../deploymentLV.inc
+
+litp create_plan
+litp run_plan
+
+
+## LVM
+
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o snap_size=0
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o backup_snap_size=92
+assertProperty /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg0/file_systems/root  -o backup_snap_size=92
+
+litp create_snapshot
+assertNoCallbackTask _create_snapshot_cb /deployments/d1/clusters/tmp/nodes/node43/system 
+
+litp create_snapshot -n test
+assertCallbackTask _create_snapshot_cb /deployments/d1/clusters/tmp/nodes/node43/system size=15073.28M 
+
+litp remove_snapshot
+assertNoCallbackTask _remove_snapshot_cb /deployments/d1/clusters/tmp/nodes/node43/system
+
+litp remove_snapshot -n test
+assertCallbackTask _remove_snapshot_cb /deployments/d1/clusters/tmp/nodes/node43/system
+

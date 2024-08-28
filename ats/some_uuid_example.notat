@@ -1,0 +1,12 @@
+# LUN Attached device on a blade
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name="hd0" size="512G" bootable=true uuid="6006016011602d00bc383819f679e311"
+
+# QEMU with virtio-scsi controller
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name="hd0" size="512G" bootable=true uuid="drive-scsi0-0-0-0"
+
+# QEMU with SATA/IDE Controller (singleblade setup)
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name="hd0" size="512G" bootable=true uuid="ATA_QEMU_HARDDISK_QM00001"
+
+# VirtualBox with SATA Controller
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name="hd0" size="512G" bootable=true uuid="ATA_VBOX_HARDDISK_VBfa3d1e0b-0c7f37a6"
+

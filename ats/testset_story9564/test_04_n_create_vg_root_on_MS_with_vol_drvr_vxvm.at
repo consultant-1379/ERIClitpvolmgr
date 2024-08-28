@@ -1,0 +1,24 @@
+#    Description:
+#        This test ensures that a vxvm storage-profile can't be inherited to
+#        a MS
+
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp create -p /infrastructure/systems/system_ms/disks/hd1 -t disk -o name=hd1 size=20G bootable=true uuid='None'
+
+litp create -p /infrastructure/storage/storage_profiles/sp9564 -t storage-profile -o volume_driver=vxvm
+litp create -p /infrastructure/storage/storage_profiles/sp9564/volume_groups/vg1 -t volume-group -o volume_group_name='vg_root'
+litp create -p /infrastructure/storage/storage_profiles/sp9564/volume_groups/vg1/file_systems/fs9564 -t file-system -o type=vxfs mount_point=/jump size=10G  snap_size=5
+litp create -p /infrastructure/storage/storage_profiles/sp9564/volume_groups/vg1/physical_devices/pd9564 -t physical-device -o device_name='hd1'
+litp inherit -p /ms/storage_profile -s /infrastructure/storage/storage_profiles/sp9564
+
+
+let __err_a --err_vpath /ms/storage_profile --err_message 'Create plan failed: The "volume_driver" property on an MS storage-profile must have a value of "lvm"'
+let __err_b --err_vpath /ms/storage_profile/volume_groups/vg1  --err_message "Create plan failed: The system disk 'none' modeled for 'vg_root' volume-group on MS '/ms' is invalid; it is not the real Kickstarted device, which has a UUID of 'ata_vbox_harddisk_vb24150799_28e77304'"
+
+assertError __err_a __err_b create_plan

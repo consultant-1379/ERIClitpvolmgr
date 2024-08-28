@@ -1,0 +1,4 @@
+# This test checks that an error will be raised if volume_driver property value is neither 'lvm' nor 'vxvm'
+
+assertError --err_type ValidationError --err_property  volume_driver --err_message "Invalid value 'test'. Value must be a valid Litp volume driver type: one of 'lvm' or 'vxvm'" create -p /infrastructure/storage/storage_profiles/test_profile -t storage-profile -o volume_driver="test" 
+

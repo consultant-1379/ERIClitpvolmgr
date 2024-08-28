@@ -1,0 +1,26 @@
+## Verify that if a cluster is set to depend on itself at snapshot
+## creation time, when a user run "restore_snapshot" the nodes
+## restart tasks are not re-ordered
+
+runLitpScript ../deploymentCluster.inc 
+add-plugins ../plugins/patch_mcollective_plugin
+
+
+litp update -p /deployments/d1/clusters/c1 -o dependency_list=c2 
+litp update -p /deployments/d1/clusters/c2 -o dependency_list=c3
+litp update -p /deployments/d1/clusters/c3 -o dependency_list=c3
+
+litp create_snapshot
+
+assertLogMessage 'WARNING - Order of clusters is invalid.  Unordered cluster reboot sequence will be used during deployment snapshot restore for deployment "d1": A cluster cannot depend on itself. Please ensure "dependency_list" property is correct for cluster "c3".'
+
+clearLogs
+litp restore_snapshot
+
+assertLogMessage 'WARNING - Order of clusters is invalid.  Unordered cluster reboot sequence will be used during deployment snapshot restore for deployment "d1": A cluster cannot depend on itself. Please ensure "dependency_list" property is correct for cluster "c3".'
+
+assertCallbackTask _restart_node /deployments/d1/clusters/c1
+assertCallbackTask _restart_node /deployments/d1/clusters/c2
+assertCallbackTask _restart_node /deployments/d1/clusters/c3
+assertNoCallbackTask _restart_node /deployments/d1/clusters/c4
+

@@ -1,0 +1,36 @@
+## Verify dependency graph can be determined at snapshot creation
+## time if clusters are in Applied state
+
+
+runLitpScript ../deploymentCluster.inc 
+add-plugins ../plugins/patch_mcollective_plugin
+
+
+litp update -p /deployments/d1/clusters/c1 -o dependency_list=c2 
+litp update -p /deployments/d1/clusters/c2 -o dependency_list=c3
+
+assertState -p /deployments/d1/clusters/c1 Updated
+assertState -p /deployments/d1/clusters/c2 Updated
+
+
+# change something to set cluster items to Applied
+litp update -p  /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o size=5G
+litp create_plan
+litp run_plan
+
+assertState -p /deployments/d1/clusters/c1 Applied
+assertState -p /deployments/d1/clusters/c2 Applied
+assertState -p /deployments/d1/clusters/c3 Applied
+
+litp create_snapshot
+
+
+litp restore_snapshot
+
+
+let __restart_c1 CallbackTask _restart_node /deployments/d1/clusters/c1
+let __restart_c2 CallbackTask _restart_node /deployments/d1/clusters/c2
+let __restart_c3 CallbackTask _restart_node /deployments/d1/clusters/c3
+
+assertTaskBeforeTask __restart_c3 __restart_c2
+assertTaskBeforeTask __restart_c2 __restart_c1

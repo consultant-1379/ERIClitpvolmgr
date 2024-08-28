@@ -1,0 +1,19 @@
+#Description:
+#    This test ensures numner of LV is correct
+#
+#Actions:
+#    1. Define a physical device with no LV
+#    2. run create_plan
+#    3. Check validation error messages
+#Result:
+#    CardinalityError Validation error
+
+
+runLitpScript ../deploymentLV.inc
+
+litp remove -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root 
+litp remove -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/swap 
+
+let __err_a --err_type CardinalityError --err_message "Create plan failed: This collection requires a minimum of 1 items not marked for removal" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg0/file_systems
+
+assertError __err_a create_plan

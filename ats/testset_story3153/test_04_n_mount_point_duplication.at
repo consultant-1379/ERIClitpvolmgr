@@ -1,0 +1,21 @@
+#Description:
+#    This test checks that a nodes file system can allocate exactly the
+#    same space what is available on the volume group
+#
+#Actions:
+#    1. Allocate same space for file systems than available on VG
+#    2. run create_plan
+#    2. Check there is no any validation error
+#
+#Result:
+#    Can allocate same space for file systems as available on VG
+
+runLitpScript node_profile_base.inc
+
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/home1 -t file-system -o type="ext4" mount_point="/home" size="1G"
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/home2 -t file-system -o type="ext4" mount_point="/home" size="1G"
+
+let __err1 --err_vpath "/deployments/at/clusters/cluster1/nodes/node1/storage_profile/volume_groups/root_vg/file_systems/home2"
+let __err2 --err_vpath "/deployments/at/clusters/cluster1/nodes/node1/storage_profile/volume_groups/root_vg/file_systems/home1"
+let __err3 --err_type ValidationError --err_message "File System mount_point is not unique for this Storage profile"
+assertError __err1 __err2 __err3 create_plan

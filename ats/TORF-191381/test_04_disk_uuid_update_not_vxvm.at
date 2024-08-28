@@ -1,0 +1,20 @@
+add-extensions torf_191381_model_extension
+runLitpScript torf_191381_test_setup.inc
+
+litp create_plan
+litp run_plan
+
+assertState -p /deployments/d1/clusters/c1/nodes/n1/system/disks/d1 Applied
+assertState -p /deployments/d1/clusters/c1/nodes/n2/system/disks/d1 Applied
+assertState -p /infrastructure/systems/s1/disks/d1 Applied
+assertState -p /infrastructure/systems/s2/disks/d1 Applied
+
+litp update -p /infrastructure/systems/s1/disks/d2 -o uuid=20000000fc85c929
+litp update -p /infrastructure/systems/s2/disks/d2 -o uuid=20000000fc85c929
+
+assertState -p /deployments/d1/clusters/c1/nodes/n1/system/disks/d2 Updated
+assertState -p /deployments/d1/clusters/c1/nodes/n2/system/disks/d2 Updated
+assertState -p /infrastructure/systems/s1/disks/d2 Updated
+assertState -p /infrastructure/systems/s2/disks/d2 Updated
+
+assertError --err_type DoNothingPlanError --err_message 'Create plan failed: no tasks were generated' create_plan

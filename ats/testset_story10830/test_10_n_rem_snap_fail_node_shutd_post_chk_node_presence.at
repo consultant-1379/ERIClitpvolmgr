@@ -1,0 +1,17 @@
+## This test tests an edge case in which node1 goes down while
+## remove_snapshot is running but the plan has already passed the node
+## reachable check.
+
+
+runLitpScript ../deploymentLV.inc
+add-plugins ../plugins/patch_mcollective_plugin
+add-plugins ../plugins/no_restore_reply
+
+litp create_snapshot
+disableCallbackMockInNextSnapshotPlan _remove_snapshot_cb /deployments/d1/clusters/c1/nodes/node1/system
+litp remove_snapshot
+assertLogMessage "ERROR - CallbackExecutionException running task: Remove LVM deployment snapshot \"L_vg_1_root_\" on node \"node1\"; (Exception message: 'No answer from node node1')"
+
+assertTask 2 _remove_snapshot_cb node1 /deployments/d1/clusters/c1/nodes/node1/system Failed
+assertTask 0 _check_remove_nodes_reachable_cb [node1,node2] /snapshots/snapshot Success 
+assertPlanState failed

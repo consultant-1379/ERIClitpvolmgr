@@ -1,0 +1,54 @@
+## LITPCDS-13195
+## Test verifies that snapshot plans do not modify item states
+runLitpScript ../minimum_deployment.inc
+
+litp create_plan
+litp run_plan
+
+## 1. Mark a cluster item ForRemoval 
+litp remove -p /deployments/d1/clusters/c1
+assertState -p /deployments/d1/clusters/c1 ForRemoval
+
+## 2. Create a deployment snapshot and check that the state of cluster item has not changed
+litp create_snapshot
+
+# Make sure the vpath checked later is actually in the plan
+assertCallbackTask _create_snapshot_cb /deployments/d1/clusters/c1/nodes/node1/system
+assertCallbackTask _create_snapshot_cb /deployments/d1/clusters/c1/nodes/node2/system
+
+## 3. Verify item states have not been changed by snapshot plans
+assertState -p /deployments/d1/clusters/c1 ForRemoval
+assertState -p /deployments/d1/clusters/c1/nodes/node1/system ForRemoval
+assertState -p /deployments/d1/clusters/c1/nodes/node2/system ForRemoval
+
+## 4. Update "dependency_list" property of cluster c1
+litp update -p /deployments/d1/clusters/c1 -o dependency_list=""
+
+## 5. Verify cluster is in Updated state
+assertState -p /deployments/d1/clusters/c1 Updated 
+
+## 6. Verify other items are in Applied state
+assertState -p /deployments/d1/clusters/c1/nodes Applied
+assertState -p /deployments/d1/clusters/c1/nodes/node1/system Applied
+assertState -p /deployments/d1/clusters/c1/nodes/node2/system Applied
+
+## 7. Mark the cluster ForRemoval again
+litp remove -p /deployments/d1/clusters/c1
+assertState -p /deployments/d1/clusters/c1 ForRemoval
+
+## 8. Remove the snapshot
+litp remove_snapshot
+
+assertCallbackTask _remove_snapshot_cb /deployments/d1/clusters/c1/nodes/node1/system
+assertCallbackTask _remove_snapshot_cb /deployments/d1/clusters/c1/nodes/node2/system
+
+## 9. Update "dependency_list" property of cluster c1
+litp update -p /deployments/d1/clusters/c1 -o dependency_list=""
+
+## 10. Verify cluster is in Updated state
+assertState -p /deployments/d1/clusters/c1 Updated 
+
+## 11. Verify other items are in Applied state
+assertState -p /deployments/d1/clusters/c1/nodes Applied
+assertState -p /deployments/d1/clusters/c1/nodes/node1/system Applied
+assertState -p /deployments/d1/clusters/c1/nodes/node2/system Applied

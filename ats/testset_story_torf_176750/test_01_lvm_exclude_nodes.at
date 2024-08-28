@@ -1,0 +1,25 @@
+runLitpScript ../minimum_deployment.inc
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs3 -t file-system -o type=ext4 mount_point=/a-n-other size=100M snap_size=100
+
+litp create_plan
+litp run_plan
+
+# Confirm tasks are present for both nodes
+
+litp create_snapshot --name TORF-176750
+assertCallbackTask _create_snapshot_cb /deployments/d1/clusters/c1/nodes/node1/system name=L_vg_1_fs3_TORF-176750
+assertCallbackTask _create_snapshot_cb /deployments/d1/clusters/c1/nodes/node2/system name=L_vg_1_fs3_TORF-176750
+
+litp remove_snapshot --name TORF-176750
+assertCallbackTask _remove_snapshot_cb /deployments/d1/clusters/c1/nodes/node1/system name=L_vg_1_fs3_TORF-176750
+assertCallbackTask _remove_snapshot_cb /deployments/d1/clusters/c1/nodes/node2/system name=L_vg_1_fs3_TORF-176750
+
+# Confirm tasks are *not* present for the excluded node(s)
+
+litp create_snapshot --name TORF-176750 --exclude_nodes 'node2'
+assertCallbackTask   _create_snapshot_cb /deployments/d1/clusters/c1/nodes/node1/system
+assertNoCallbackTask _create_snapshot_cb /deployments/d1/clusters/c1/nodes/node2/system
+
+litp remove_snapshot --name TORF-176750 --exclude_nodes 'node2'
+assertCallbackTask   _remove_snapshot_cb /deployments/d1/clusters/c1/nodes/node1/system
+assertNoCallbackTask _remove_snapshot_cb /deployments/d1/clusters/c1/nodes/node2/system

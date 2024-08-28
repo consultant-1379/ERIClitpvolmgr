@@ -1,0 +1,14 @@
+runLitpScript torf189554_basic_setup.inc
+
+litp update -p /infrastructure/storage/storage_profiles/sp3/volume_groups/vg1/file_systems/fs1 -o snap_size=0 backup_snap_size=0
+litp update -p /infrastructure/storage/storage_profiles/sp3/volume_groups/vg2/file_systems/fs1 -o snap_size=0 backup_snap_size=0
+litp update -p /infrastructure/storage/storage_profiles/sp4/volume_groups/vg1/file_systems/fs1 -o snap_size=0 backup_snap_size=0
+
+litp create_plan
+litp run_plan
+
+litp create_snapshot -n TORF-189554 --exclude_nodes=mn1
+litp remove_snapshot -n TORF-189554 --exclude_nodes=mn1
+
+# mn1 is excluded and all file-systems on cluster "c1" are snappable, file-systems in both storage-profiles in "c2" are not snappable
+assertCallbackTask _check_active_nodes_cb /snapshots/TORF-189554 data_set.clusters='{"c1": {"nodes": {"mn2": {"errors_list": [], "reachable": ""}}}}'

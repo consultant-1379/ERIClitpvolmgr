@@ -1,0 +1,23 @@
+#Description:
+#    Verify that it is only possible to create vxfs volumes
+#    in VxVM storage profiles
+#Actions:
+#    1. Create storage profile with volume_driver=lvm and a volume group
+#    2. Try to create vxfs volume in this lvm storage profile
+#    3. Ensure that validation error is raised
+#Results:
+#    Validation error raised
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp create -p /infrastructure/storage/storage_profiles/sp2545 -t storage-profile -o  volume_driver=lvm
+litp create -p /infrastructure/storage/storage_profiles/sp2545/volume_groups/lvm_vol_grp -t volume-group -o volume_group_name='lvm_vg'
+litp create -p /infrastructure/storage/storage_profiles/sp2545/volume_groups/lvm_vol_grp/file_systems/vxfs_on_lvm -t file-system -o mount_point='/media/litp' type='vxfs' size='5G'
+litp create -p /infrastructure/storage/storage_profiles/sp2545/volume_groups/lvm_vol_grp/physical_devices/disk_1 -t physical-device -o device_name='hd1'
+
+assertError --err_message 'Create plan failed: The "volume_driver" property of the storage-profile has a value "lvm"; the "type" property on all file-systems must have a value of "ext4", "xfs" or "swap".' --err_type ValidationError create_plan
+

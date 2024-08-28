@@ -1,0 +1,14 @@
+runLitpScript node_profile_base.inc
+add-plugins ./plugins/patch_mcollective_plugin
+
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name="hd0" size="512G" bootable=true uuid="6006016011602d00bc383819f679e311"
+litp create_plan
+litp run_plan
+
+litp create_snapshot
+litp remove_snapshot
+
+litp create_snapshot
+litp prepare_restore
+
+

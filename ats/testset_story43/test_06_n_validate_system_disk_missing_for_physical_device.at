@@ -1,0 +1,20 @@
+#Description:
+#    This test ensures storage profile physical device has a matching
+#    system disk
+#
+#Actions:
+#    1. Define a physical device without system disks
+#    2. run create_plan
+#    3. Check validation error messages
+#
+#Result:
+#    Validation error: Failed to find System disk 'hd0' for Node 'mn99'
+
+runLitpScript ../deploymentLV.inc
+litp remove -p /infrastructure/systems/system43/disks/disk0
+litp remove -p /infrastructure/systems/system43/disks/disk1
+
+let __err_a --err_type ValidationError --err_message "Create plan failed: Exactly one System Disk should have 'bootable' Property set to 'true'" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/system
+let __err_b --err_type ValidationError --err_message "Create plan failed: Failed to find System disk 'hd0' for Node 'mn99'" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg0/physical_devices/internal
+
+assertError __err_a __err_b create_plan

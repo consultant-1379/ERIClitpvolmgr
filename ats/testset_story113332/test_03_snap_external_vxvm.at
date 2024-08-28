@@ -1,0 +1,28 @@
+## This test verifies that if snap_external is set to true for a file
+## system there will be no snapshots for the file system
+
+
+runLitpScript ../deploymentVXVM.inc
+
+litp create_plan
+litp run_plan
+
+##  VXVM
+
+litp update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size=100
+litp update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=100
+litp update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_external=true
+litp update -p /deployments/d1/clusters/c1/storage_profile/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size=100
+
+
+litp create_snapshot
+assertNoCallbackTask _create_vxvm_snapshot_cb /snapshots/snapshot
+
+litp create_snapshot -n test
+assertNoCallbackTask _create_vxvm_snapshot_cb /snapshots/test
+
+litp remove_snapshot -n test
+assertNoCallbackTask _remove_vxvm_snapshot_cb /snapshots/test
+
+litp remove_snapshot
+assertNoCallbackTask _remove_vxvm_snapshot_cb /snapshots/snapshot

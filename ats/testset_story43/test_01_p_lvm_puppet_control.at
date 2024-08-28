@@ -1,0 +1,11 @@
+#Description:
+#
+# Verify lvm is under puppet control
+
+
+runLitpScript ../deploymentLV.inc
+
+litp create_plan
+litp run_plan
+assertFileContents node1.pp /opt/ericsson/nms/litp/etc/puppet/manifests/plugins/node1.pp
+assertFileContents node2.pp /opt/ericsson/nms/litp/etc/puppet/manifests/plugins/node2.pp

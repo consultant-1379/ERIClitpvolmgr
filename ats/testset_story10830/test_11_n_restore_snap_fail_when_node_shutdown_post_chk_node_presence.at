@@ -1,0 +1,17 @@
+## This test tests an edge case in which node1 goes down while
+## restore_snapshot is running but the plan has already passed the node
+## reachable check.
+
+
+runLitpScript ../deploymentLV.inc
+add-plugins ../plugins/patch_mcollective_plugin
+add-plugins ../plugins/no_restore_reply
+
+litp create_snapshot
+disableCallbackMockInNextSnapshotPlan _restore_ss_rpc_task /deployments/d1/clusters/c1/nodes/node1/system
+litp restore_snapshot
+assertLogMessage "ERROR - CallbackExecutionException running task: Restore LVM vol \"L_vg_1_root_\" on node \"node1\"; (Exception message: 'No answer from node node1')"
+
+assertTask 0 _check_restore_nodes_reachable_and_snaps_exist_cb True /snapshots/snapshot Success
+assertTask 2 _restore_ss_rpc_task node1 /deployments/d1/clusters/c1/nodes/node1/system Failed
+assertPlanState failed

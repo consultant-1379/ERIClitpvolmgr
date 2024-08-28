@@ -1,0 +1,24 @@
+## This test verifies that if backup_snap_size defaults to snaps_size
+
+runLitpScript ../deploymentVXVM.inc
+
+litp create_plan
+litp run_plan
+
+## 2. VXVM
+
+litp update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size=0
+litp update -p  /deployments/d1/clusters/c1/storage_profile/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size=58
+
+litp create_snapshot
+assertCallbackTask _create_vxvm_snapshot_cb /snapshots/snapshot
+
+litp create_snapshot -n test
+assertCallbackTask _create_vxvm_snapshot_cb /snapshots/test
+
+litp remove_snapshot -n test
+assertCallbackTask _remove_vxvm_snapshot_cb /snapshots/test
+
+litp remove_snapshot
+assertCallbackTask _remove_vxvm_snapshot_cb /snapshots/snapshot
+

@@ -1,0 +1,23 @@
+## This test verifies that is the backup_snap_size defaults to snap_size
+
+runLitpScript ../deploymentLV.inc
+
+litp create_plan
+litp run_plan
+
+
+## LVM
+
+assertProperty /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o snap_size=100
+
+litp create_snapshot
+assertCallbackTask _create_snapshot_cb /deployments/d1/clusters/tmp/nodes/node43/system 
+
+litp create_snapshot -n test
+assertCallbackTask _create_snapshot_cb /deployments/d1/clusters/tmp/nodes/node43/system 
+
+litp remove_snapshot
+assertCallbackTask _remove_snapshot_cb /deployments/d1/clusters/tmp/nodes/node43/system
+
+litp remove_snapshot -n test
+assertCallbackTask _remove_snapshot_cb /deployments/d1/clusters/tmp/nodes/node43/system

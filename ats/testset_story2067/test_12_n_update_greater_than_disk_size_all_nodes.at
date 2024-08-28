@@ -1,0 +1,23 @@
+#    Description:
+#        Increases the size of FS in more than space available
+
+
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o size=13016M
+
+let __err_a --err_type ValidationError --err_message "Create plan failed: The System Disks (28672 MB) on node 'node1' are not large enough for volume group requirement (28680 MB). Volume group requirement = ((file systems including snapshots) 28080 MB) + (LVM metadata 600 MB.)" --err_vpath /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg_1
+let __err_b --err_type ValidationError --err_message "Create plan failed: The System Disks (28672 MB) on node 'node2' are not large enough for volume group requirement (28680 MB). Volume group requirement = ((file systems including snapshots) 28080 MB) + (LVM metadata 600 MB.)" --err_vpath /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_1
+
+assertError __err_a __err_b create_plan
+
+litp restore_model
+
+litp update -p /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_1/file_systems/root -o size=13016M
+
+assertError  __err_b --errors_length=1 create_plan

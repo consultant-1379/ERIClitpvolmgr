@@ -1,0 +1,20 @@
+#   Description:
+#       Check that plan fails if an otherwise valid resize
+#       is attempted with a snapshot in place.
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+
+litp create_snapshot
+assertState -p /snapshots/snapshot Applied
+
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o size=8G
+
+let __err_a --err_type ValidationError --err_message 'Create plan failed: Snapshot(s) with name(s) "snapshot" exist. Changing the "size" property of an "ext4", "xfs" or "vxfs" file system while a snapshot exists is not supported' --err_vpath /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg_1/file_systems/root
+let __err_b --err_type ValidationError --err_message 'Create plan failed: Snapshot(s) with name(s) "snapshot" exist. Changing the "size" property of an "ext4", "xfs" or "vxfs" file system while a snapshot exists is not supported' --err_vpath /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_1/file_systems/root
+
+assertError __err_a __err_b create_plan  

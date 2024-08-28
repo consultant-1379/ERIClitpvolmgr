@@ -1,0 +1,31 @@
+#Description:
+#    This test checks that a node file systems can not allocate more
+#    space than is available on the volume group
+#
+#Actions:
+#    1. Define bootable system disk
+#    2. Create volume group
+#    4. File system has bigger size alltogether than system disk
+#    5. run create_plan
+#    6. Check validation error messages
+#
+#Result:
+#    Validation error message
+
+runLitpScript ../deploymentLV.inc
+
+litp update -p /infrastructure/systems/system43/disks/disk0 -o size=607M
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root  -o type='ext4' mount_point='/' size='4M' snap_size="0" 
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/swap -o size='4M' 
+
+let __err_a --err_type ValidationError --err_message "Create plan failed: The System Disks (607 MB) on node 'mn99' are not large enough for volume group requirement (608 MB). Volume group requirement = ((file systems including snapshots) 8 MB) + (LVM metadata 600 MB.)" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg0
+
+assertError __err_a create_plan
+
+litp update -p /infrastructure/systems/system43/disks/disk0 -o size=610M
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root  -o type='ext4' mount_point='/' size='4M' snap_size="51" 
+let __err_a --err_type ValidationError --err_message "Create plan failed: The System Disks (610 MB) on node 'mn99' are not large enough for volume group requirement (611 MB). Volume group requirement = ((file systems including snapshots) 11 MB) + (LVM metadata 600 MB.)" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg0
+assertError __err_a create_plan
+
+litp update -p /infrastructure/systems/system43/disks/disk0 -o size=611M
+litp create_plan

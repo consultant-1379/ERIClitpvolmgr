@@ -1,0 +1,19 @@
+#Description:
+#    This test will verify that an error is generated when a user
+#    attempts to update/remove the snapshot model item via XML.
+#Actions:
+# 1. Attempt to load a snapshot XML file
+# 2. Verify that MS replies with MethodNotAllowedError
+#Result:
+#    An error is generated when a user attempts to update/remove the
+#    snapshot model item via XML.
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp create_snapshot
+
+assertError --err_type MethodNotAllowedError --err_message 'Operation not permitted'  load -p /snapshots/snapshot -f ss_import.xml

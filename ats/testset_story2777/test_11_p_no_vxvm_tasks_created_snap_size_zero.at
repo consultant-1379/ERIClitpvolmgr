@@ -1,0 +1,32 @@
+#      Description:
+#          This test will verify that no vxvm tasks are created if the vxvm
+#          volumes have no snapshots (snap_size=0).
+
+
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+
+litp create -p /infrastructure/storage/storage_profiles/sp2777 -t storage-profile -o volume_driver=vxvm 
+litp create -p /infrastructure/storage/storage_profiles/sp2777/volume_groups/vxvm_vol_grp -t volume-group -o volume_group_name='vxvm_vol_grp'
+litp create -p /infrastructure/storage/storage_profiles/sp2777/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -t file-system -o type='vxfs' size='2G' mount_point='/mp_2777_4'
+litp create -p /infrastructure/storage/storage_profiles/sp2777/volume_groups/vxvm_vol_grp/physical_devices/disk_1 -t physical-device -o device_name=lun_0
+litp inherit -p /deployments/d1/clusters/c1/storage_profile/sp2777 -s /infrastructure/storage/storage_profiles/sp2777
+
+litp create_plan
+litp run_plan
+
+litp create_snapshot
+litp restore_snapshot
+
+assertCallbackTask _restore_vxvm_snapshot_cb /snapshots/snapshot 
+
+litp update -p /deployments/d1/clusters/c1/storage_profile/sp2777/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size='0'
+
+litp remove_snapshot
+litp create_snapshot
+litp restore_snapshot
+
+assertNoCallbackTask _restore_vxvm_snapshot_cb /snapshots/snapshot 
+

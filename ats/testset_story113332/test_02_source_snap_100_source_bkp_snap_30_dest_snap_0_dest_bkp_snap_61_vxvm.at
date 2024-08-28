@@ -1,0 +1,29 @@
+## This test verifies that if the snap_size is set to 0 and backup_snap_size to
+## 100 a there will only be named backup snapshot for the file system
+
+
+runLitpScript ../deploymentVXVM.inc
+
+litp create_plan
+litp run_plan
+
+##  VXVM
+
+litp update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size=10
+litp update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=30
+litp update -p /deployments/d1/clusters/c1/storage_profile/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size=0
+litp update -p /deployments/d1/clusters/c1/storage_profile/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=61
+assertProperty /deployments/d1/clusters/c1/storage_profile/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=61 
+
+litp create_snapshot
+assertNoCallbackTask _create_vxvm_snapshot_cb /snapshots/snapshot
+
+litp create_snapshot -n test
+assertCallbackTask _create_vxvm_snapshot_cb /snapshots/test
+assertCallbackTask _create_vxvm_snapshot_cb /snapshots/test data_set.volume_groups./deployments/d1/clusters/c1/storage_profile/sp/volume_groups/vxvm_vol_grp.file_systems.vxfs1.snapshot_size=1249M
+
+litp remove_snapshot -n test
+assertCallbackTask _remove_vxvm_snapshot_cb /snapshots/test
+
+litp remove_snapshot
+assertNoCallbackTask _remove_vxvm_snapshot_cb /snapshots/snapshot

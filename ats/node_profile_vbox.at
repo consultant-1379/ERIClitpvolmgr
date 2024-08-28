@@ -1,0 +1,12 @@
+runLitpScript node_profile_base.inc
+
+# VirtualBox with SATA Controller
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name="hd0" size="512G" bootable=true uuid="ATA_VBOX_HARDDISK_VBfa3d1e0b-0c7f37a6"
+
+litp create_plan
+litp run_plan
+
+assertDirectoryContents node_profile_vbox/ /opt/ericsson/nms/litp/etc/puppet/manifests/plugins/
+
+assertError create_plan
+# assertPlanLength 3

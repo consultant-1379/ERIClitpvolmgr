@@ -1,0 +1,26 @@
+
+# add node systems for nodes 3 and 4
+litp create -p /infrastructure/systems/system_3 -t system -o system_name=MN3VM
+litp create -p /infrastructure/systems/system_3/disks/disk_0 -t disk -o name=hd0 size=28G bootable=true uuid=ATA_VBOX_HARDDISK_VBe2bee164-af9c2453
+
+litp create -p /infrastructure/systems/system_4 -t system -o system_name=MN4VM
+litp create -p /infrastructure/systems/system_4/disks/disk_0 -t disk -o name=hd0 size=28G bootable=true uuid=ATA_VBOX_HARDDISK_VBe2bee164-af9c3456
+
+# Setup Node3
+litp create -p /deployments/d1/clusters/c1/nodes/node_3 -t node -o hostname=mn3
+litp inherit -p /deployments/d1/clusters/c1/nodes/node_3/system -s /infrastructure/systems/system_3
+litp inherit -p /deployments/d1/clusters/c1/nodes/node_3/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/d1/clusters/c1/nodes/node_3/os -s /software/profiles/rhel_6_4
+litp create -p /deployments/d1/clusters/c1/nodes/node_3/network_interfaces/nic_0 -t eth -o device_name=eth0 macaddress=08:00:27:5B:C1:32 network_name=mgmt ipaddress=10.10.10.103
+litp create -p /deployments/d1/clusters/c1/nodes/node_3/network_interfaces/nic_2 -t eth -o device_name=eth2 macaddress=08:00:27:06:C0:63 network_name=heartbeat1
+litp create -p /deployments/d1/clusters/c1/nodes/node_3/network_interfaces/nic_3 -t eth -o device_name=eth3 macaddress=08:00:27:21:7D:B4 network_name=heartbeat2
+
+# Setup Node4
+litp create -p /deployments/d1/clusters/c1/nodes/node_4 -t node -o hostname=mn4
+litp inherit -p /deployments/d1/clusters/c1/nodes/node_4/system -s /infrastructure/systems/system_4
+litp inherit -p /deployments/d1/clusters/c1/nodes/node_4/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/d1/clusters/c1/nodes/node_4/os -s /software/profiles/rhel_6_4
+litp create -p /deployments/d1/clusters/c1/nodes/node_4/network_interfaces/nic_0 -t eth -o device_name=eth0 macaddress=08:00:27:5B:C1:33 network_name=mgmt ipaddress=10.10.10.104
+litp create -p /deployments/d1/clusters/c1/nodes/node_4/network_interfaces/nic_2 -t eth -o device_name=eth2 macaddress=08:00:27:06:C0:64 network_name=heartbeat1
+litp create -p /deployments/d1/clusters/c1/nodes/node_4/network_interfaces/nic_3 -t eth -o device_name=eth3 macaddress=08:00:27:21:7D:B5 network_name=heartbeat2
+

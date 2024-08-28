@@ -1,0 +1,68 @@
+# Test that vxfs file system size cannot be updated while a snapshot exists
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create -p /infrastructure/storage/storage_profiles/sp9114 -t storage-profile -o volume_driver=vxvm
+litp create -p /infrastructure/storage/storage_profiles/sp9114/volume_groups/vxvm_vol_grp -t volume-group -o volume_group_name='vxvm_vol_grp'
+litp create -p /infrastructure/storage/storage_profiles/sp9114/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -t file-system -o type='vxfs' size='2G' mount_point='/mp_9114_4'
+litp create -p /infrastructure/storage/storage_profiles/sp9114/volume_groups/vxvm_vol_grp/physical_devices/disk_1 -t physical-device -o device_name=lun_0
+litp inherit -p /deployments/d1/clusters/c1/storage_profile/sp9114 -s /infrastructure/storage/storage_profiles/sp9114
+
+litp create_plan
+litp run_plan
+
+# test infrastructure item with deployment snapshot present
+litp create_snapshot
+assertState -p /snapshots/snapshot Applied
+litp update -p /infrastructure/storage/storage_profiles/sp9114/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o size=3G
+
+assertError --err_message 'Create plan failed: Snapshot(s) with name(s) "snapshot" exist. Changing the "size" property of an "ext4", "xfs" or "vxfs" file system while a snapshot exists is not supported' --err_type ValidationError --err_vpath /deployments/d1/clusters/c1/storage_profile/sp9114/volume_groups/vxvm_vol_grp/file_systems/vxfs1  create_plan
+
+litp remove_snapshot
+litp restore_model
+
+# test infrastructure item with named snapshot present
+litp create_snapshot -n test_snap
+assertState -p /snapshots/test_snap Applied
+litp update -p /infrastructure/storage/storage_profiles/sp9114/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o size=3G
+
+assertError --err_message 'Create plan failed: Snapshot(s) with name(s) "test_snap" exist. Changing the "size" property of an "ext4", "xfs" or "vxfs" file system while a snapshot exists is not supported' --err_type ValidationError --err_vpath /deployments/d1/clusters/c1/storage_profile/sp9114/volume_groups/vxvm_vol_grp/file_systems/vxfs1  create_plan
+
+litp remove_snapshot -n test_snap
+litp restore_model
+
+# test inherited deployment item with deployment snapshot
+
+litp create_snapshot
+assertState -p /snapshots/snapshot Applied
+litp update -p /deployments/d1/clusters/c1/storage_profile/sp9114/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o size=3G
+
+assertError --err_message 'Create plan failed: Snapshot(s) with name(s) "snapshot" exist. Changing the "size" property of an "ext4", "xfs" or "vxfs" file system while a snapshot exists is not supported' --err_type ValidationError --err_vpath /deployments/d1/clusters/c1/storage_profile/sp9114/volume_groups/vxvm_vol_grp/file_systems/vxfs1  create_plan
+
+litp remove_snapshot
+litp restore_model
+
+
+# test inherited deployment item with deployment snapshot
+
+litp create_snapshot -n test_snap
+assertState -p /snapshots/test_snap Applied
+litp update -p /deployments/d1/clusters/c1/storage_profile/sp9114/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o size=3G
+
+assertError --err_message 'Create plan failed: Snapshot(s) with name(s) "test_snap" exist. Changing the "size" property of an "ext4", "xfs" or "vxfs" file system while a snapshot exists is not supported' --err_type ValidationError --err_vpath /deployments/d1/clusters/c1/storage_profile/sp9114/volume_groups/vxvm_vol_grp/file_systems/vxfs1  create_plan
+
+litp remove_snapshot -n test_snap
+litp restore_model
+
+# Test error if multiple snapshots are present
+litp create_snapshot
+assertState -p /snapshots/snapshot Applied
+litp create_snapshot -n test_snap1
+assertState -p /snapshots/test_snap1 Applied
+litp create_snapshot -n test_snap2
+assertState -p /snapshots/test_snap2 Applied
+
+litp update -p /deployments/d1/clusters/c1/storage_profile/sp9114/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o size=3G
+
+assertError --err_message 'Create plan failed: Snapshot(s) with name(s) "snapshot, test_snap1, test_snap2" exist. Changing the "size" property of an "ext4", "xfs" or "vxfs" file system while a snapshot exists is not supported' --err_type ValidationError --err_vpath /deployments/d1/clusters/c1/storage_profile/sp9114/volume_groups/vxvm_vol_grp/file_systems/vxfs1  create_plan

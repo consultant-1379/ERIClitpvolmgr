@@ -1,0 +1,44 @@
+##############################################################
+#TORF-106491:
+#     Extend my disk and the LVM volumes that are on 
+#     nodes
+# Description:
+#     Test to verify that a user with an existing disk on the node 
+#     during expansion, the PV can be increased by the litp model 
+#     and subsequently any volume groups filesystems can be allocated
+#     with the additional memory
+# Steps:
+#	Deploy cluster with existing SCSI disk
+#	Create/ Run plan
+#	Increase existing disk by running relevant commands
+#	Expand the cluster in the litp model
+#	Create/ Run plan
+#	Ensure node and model have both been updated with increased disk size available
+#	Create/ Run plan again
+#	No errors should be returned
+# Result:
+#	Existing disks can be increased during expansion
+######################################################
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create -p /infrastructure/systems/system_1/disks/test_disk -t disk -o name='hd_test' size='19G' bootable='false' uuid='ATA_VBOX_HARDDISK_VB1d2c0e34-test'
+litp create -p /infrastructure/systems/system_2/disks/test_disk -t disk -o name='hd_test' size='19G' bootable='false' uuid='ATA_VBOX_HARDDISK_VB1d2c0e35-test'
+
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test -t volume-group -o volume_group_name="vg_test" 
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test/file_systems/fs_test -t file-system -o type='ext4' mount_point='/test' size=8G
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test/physical_devices/test_dev -t physical-device -o device_name=hd_test
+
+litp create_plan
+runPlanEnd
+
+runLitpScript ../add_2_nodes_to_cluster.atlib
+
+litp update -p /infrastructure/systems/system_1/disks/test_disk -o size='30G'
+litp update -p /infrastructure/systems/system_2/disks/test_disk -o size='30G'
+litp create -p /infrastructure/systems/system_3/disks/test_disk -t disk -o name='hd_test' size='30G' bootable='false' uuid='ATA_VBOX_HARDDISK_VB1d2c0e40-test'
+litp create -p /infrastructure/systems/system_4/disks/test_disk -t disk -o name='hd_test' size='30G' bootable='false' uuid='ATA_VBOX_HARDDISK_VB1d2c0e41-test'
+
+litp create_plan
+runPlanEnd
+

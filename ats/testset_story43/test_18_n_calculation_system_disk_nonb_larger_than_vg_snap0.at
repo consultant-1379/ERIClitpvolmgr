@@ -1,0 +1,38 @@
+#Description:
+#    This test checks that a node file systems can not allocate more
+#    space than is available on the volume group
+#
+#Actions:
+#    1. Define non-bootable system disk
+#    2. Create volume group
+#    4. File system has bigger size alltogether than system disk
+#    5. run create_plan
+#    6. Check validation error messages
+#
+#Result:
+#    Validation error message: The System Disk size (199 MBs)
+#    is not large enough for volume group requirement (200 MBs),
+#    containing file systems with snapshots 100 MBs and LVM metadata
+#    100 MBs.
+
+
+runLitpScript ../deploymentLV.inc
+
+litp update -p /infrastructure/systems/system43/disks/disk1 -o  size='199M'
+litp create -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg1 -t volume-group -o volume_group_name='vg_test' 
+litp create -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg1/file_systems/test -t file-system -o type='ext4' mount_point='/test' size='100M' snap_size='0' 
+litp create -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg1/physical_devices/internal -t physical-device -o device_name='hd1' 
+
+let __err_a --err_type ValidationError --err_message "Create plan failed: The System Disks (199 MB) on node 'mn99' are not large enough for volume group requirement (200 MB). Volume group requirement = ((file systems including snapshots) 100 MB) + (LVM metadata 100 MB.)" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg1
+
+assertError __err_a  create_plan
+
+
+litp update -p /infrastructure/systems/system43/disks/disk1 -o  size='299M'
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg1/file_systems/test -o snap_size='100' 
+
+let __err_a --err_type ValidationError --err_message "Create plan failed: The System Disks (299 MB) on node 'mn99' are not large enough for volume group requirement (300 MB). Volume group requirement = ((file systems including snapshots) 200 MB) + (LVM metadata 100 MB.)" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg1
+
+assertError __err_a  create_plan
+
+

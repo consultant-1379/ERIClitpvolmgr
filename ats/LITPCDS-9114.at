@@ -1,0 +1,110 @@
+litp create -p /software/profiles/os_prof1 -t os-profile -o name=os-profile1 path=/var/www/html/6/os/x86_64/
+litp create -p /software/items/openjdk -t package -o name=java-1.7.0-openjdk
+litp create -p /deployments/d1 -t deployment
+litp create -p /infrastructure/storage/storage_profiles/profile_1 -t storage-profile
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1 -t volume-group -o volume_group_name=vg_root
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/root -t file-system -o type=ext4 mount_point=/ size=8G
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/swap -t file-system -o type=swap mount_point=swap size=2G
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/data1 -t file-system -o type=ext4 mount_point=/data1 size=2G snap_size=0
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/physical_devices/internal -t physical-device -o device_name=hd0
+litp create -p /infrastructure/storage/storage_profiles/profile_2 -t storage-profile -o volume_driver=vxvm
+litp create -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vg1_vxvm -t volume-group -o volume_group_name=vg1_vxvm
+litp create -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vg1_vxvm/file_systems/data1_vxvm -t file-system -o type=vxfs mount_point=/data1 size=1G snap_size=0
+litp create -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vg1_vxvm/file_systems/data2_vxvm -t file-system -o type=vxfs mount_point=/data2 size=2G snap_size=0
+litp create -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vg1_vxvm/physical_devices/internal -t physical-device -o device_name=hd1
+litp create -p /infrastructure/systems/sys1 -t blade -o system_name=CZ3129MH0H
+litp create -p /infrastructure/systems/sys2 -t blade -o system_name=CZ3128LSEA
+litp create -p /infrastructure/systems/sys2/disks/disk0 -t disk -o name=hd0 size=28G bootable=true uuid=6006016057602d00a663a7b58678e311
+litp create -p /infrastructure/systems/sys2/disks/disk1 -t disk -o name=hd1 size=12G bootable=false uuid=6006016011602d00C833f0966a63e411
+litp create -p /infrastructure/systems/sys3 -t blade -o system_name=CZ3128LSEM
+litp create -p /infrastructure/systems/sys3/disks/disk0 -t disk -o name=hd0 size=28G bootable=true uuid=6006016057602d00948f562d8778e311
+litp create -p /infrastructure/systems/sys3/disks/disk1 -t disk -o name=hd1 size=12G bootable=false uuid=6006016011602d00C833f0966a63e411
+litp create -p /infrastructure/networking/routes/r1 -t route -o subnet=0.0.0.0/0 gateway=10.44.86.65
+litp create -p /infrastructure/networking/routes/default_ipv6 -t route6 -o subnet=::/0 gateway=fdde:4d7e:d471::835:0:1
+litp create -p /infrastructure/networking/routes/traffic2_gw -t route -o subnet=192.168.168.2/32 gateway=192.168.200.130
+litp create -p /infrastructure/networking/networks/mgmt -t network -o name=mgmt subnet=10.44.86.64/26 litp_management=true
+litp create -p /infrastructure/networking/networks/heartbeat1 -t network -o name=hb1
+litp create -p /infrastructure/networking/networks/heartbeat2 -t network -o name=hb2
+litp create -p /infrastructure/networking/networks/traffic1 -t network -o name=traffic1 subnet=192.168.100.0/24
+litp create -p /infrastructure/networking/networks/traffic2 -t network -o name=traffic2 subnet=192.168.200.128/24
+litp create -p /infrastructure/networking/networks/traffic3 -t network -o name=traffic3 subnet=172.16.201.0/24
+litp update -p /ms -o hostname=ms1
+litp inherit -p /ms/system -s /infrastructure/systems/sys1
+litp inherit -p /ms/routes/r1 -s /infrastructure/networking/routes/r1
+litp create -p /ms/network_interfaces/if0 -t eth -o device_name=eth0 macaddress=78:AC:C0:FB:55:42 network_name=traffic1 ipaddress=192.168.100.97
+litp create -p /ms/network_interfaces/vlan835 -t vlan -o device_name=eth0.835 network_name=mgmt ipaddress=10.44.86.91
+litp inherit -p /ms/items/java -s /software/items/openjdk
+litp create -p /deployments/d1/clusters/c1 -t vcs-cluster -o cluster_type=sfha low_prio_net=mgmt llt_nets=hb1,hb2 cluster_id=4791 default_nic_monitor=mii
+litp create -p /deployments/d1/clusters/c1/nodes/n1 -t node -o hostname=node1
+litp inherit -p /deployments/d1/clusters/c1/nodes/n1/system -s /infrastructure/systems/sys2
+litp inherit -p /deployments/d1/clusters/c1/nodes/n1/os -s /software/profiles/os_prof1
+litp inherit -p /deployments/d1/clusters/c1/nodes/n1/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/d1/clusters/c1/nodes/n1/items/java -s /software/items/openjdk
+litp create -p /infrastructure/networking/routes/traffic3_gw_n1 -t route -o subnet=172.16.168.3/32 gateway=172.16.201.2
+litp create -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/if0 -t eth -o device_name=eth0 macaddress=98:4B:E1:68:1D:70 bridge=br0
+litp create -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/br0 -t bridge -o device_name=br0 ipaddress=10.44.86.95 network_name=mgmt stp=true
+litp create -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/if2 -t eth -o device_name=eth2 macaddress=98:4B:E1:68:1D:71 network_name=hb1
+litp create -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/if3 -t eth -o device_name=eth3 macaddress=98:4B:E1:68:1D:75 network_name=hb2
+litp create -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/if4 -t eth -o device_name=eth4 macaddress=98:4B:E1:68:1D:72 network_name=traffic1 ipaddress=192.168.100.2
+litp create -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/if5 -t eth -o device_name=eth5 macaddress=98:4B:E1:68:1D:76 network_name=traffic2 ipaddress=192.168.200.130
+litp create -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/if6 -t eth -o device_name=eth6 macaddress=98:4B:E1:68:1D:73 network_name=traffic3 ipaddress=172.16.201.2
+litp inherit -p /deployments/d1/clusters/c1/nodes/n1/routes/r1 -s /infrastructure/networking/routes/r1
+litp inherit -p /deployments/d1/clusters/c1/nodes/n1/routes/traffic2_gw -s /infrastructure/networking/routes/traffic2_gw
+litp inherit -p /deployments/d1/clusters/c1/nodes/n1/routes/traffic3_gw -s /infrastructure/networking/routes/traffic3_gw_n1
+litp create -p /deployments/d1/clusters/c1/nodes/n2 -t node -o hostname=node2
+litp inherit -p /deployments/d1/clusters/c1/nodes/n2/system -s /infrastructure/systems/sys3
+litp inherit -p /deployments/d1/clusters/c1/nodes/n2/os -s /software/profiles/os_prof1
+litp inherit -p /deployments/d1/clusters/c1/nodes/n2/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/d1/clusters/c1/nodes/n2/items/java -s /software/items/openjdk
+litp create -p /infrastructure/networking/routes/traffic3_gw_n2 -t route -o subnet=172.16.168.3/32 gateway=172.16.201.3
+litp create -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/if0 -t eth -o device_name=eth0 macaddress=98:4B:E1:69:B1:D8 bridge=br0
+litp create -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/br0 -t bridge -o device_name=br0 ipaddress=10.44.86.96 network_name=mgmt stp=true
+litp create -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/if2 -t eth -o device_name=eth2 macaddress=98:4B:E1:69:B1:D9 network_name=hb1
+litp create -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/if3 -t eth -o device_name=eth3 macaddress=98:4B:E1:69:B1:DD network_name=hb2
+litp create -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/if4 -t eth -o device_name=eth4 macaddress=98:4B:E1:69:B1:DA network_name=traffic1 ipaddress=192.168.100.3
+litp create -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/if5 -t eth -o device_name=eth5 macaddress=98:4B:E1:69:B1:DE network_name=traffic2 ipaddress=192.168.200.131
+litp create -p /deployments/d1/clusters/c1/nodes/n2/network_interfaces/if6 -t eth -o device_name=eth6 macaddress=98:4B:E1:69:B1:DB network_name=traffic3 ipaddress=172.16.201.3
+litp inherit -p /deployments/d1/clusters/c1/nodes/n2/routes/r1 -s /infrastructure/networking/routes/r1
+litp inherit -p /deployments/d1/clusters/c1/nodes/n2/routes/traffic2_gw -s /infrastructure/networking/routes/traffic2_gw
+litp inherit -p /deployments/d1/clusters/c1/nodes/n2/routes/traffic3_gw -s /infrastructure/networking/routes/traffic3_gw_n2
+litp inherit -p /deployments/d1/clusters/c1/storage_profile/vxvm_profile -s /infrastructure/storage/storage_profiles/profile_2
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh1 -t vcs-network-host -o network_name=mgmt ip=172.16.101.10
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh2 -t vcs-network-host -o network_name=mgmt ip=10.44.86.91
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh3 -t vcs-network-host -o network_name=mgmt ip=2001:ABCD:F0::10
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh4 -t vcs-network-host -o network_name=traffic1 ip=10.44.86.91
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh5 -t vcs-network-host -o network_name=traffic1 ip=2001:ABCD:F0::10
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh6 -t vcs-network-host -o network_name=traffic1 ip=172.16.101.11
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh7 -t vcs-network-host -o network_name=traffic1 ip=2001:ABCD:F0::11
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh8 -t vcs-network-host -o network_name=traffic2 ip=172.16.101.12
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh9 -t vcs-network-host -o network_name=traffic2 ip=fdde:4d7e:d471::835:100:0
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh10 -t vcs-network-host -o network_name=traffic2 ip=20.20.20.78
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh11 -t vcs-network-host -o network_name=traffic1 ip=20.20.20.78
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh12 -t vcs-network-host -o network_name=traffic1 ip=192.168.100.2
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh13 -t vcs-network-host -o network_name=traffic1 ip=192.168.100.3
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh14 -t vcs-network-host -o network_name=traffic2 ip=192.168.200.130
+litp create -p /deployments/d1/clusters/c1/network_hosts/nh15 -t vcs-network-host -o network_name=traffic2 ip=192.168.200.131
+litp create -p /deployments/d1/clusters/c1/services/cups -t vcs-clustered-service -o active=1 standby=1 name=FO_vcs1 online_timeout=45 node_list=n2,n1 dependency_list=httpd
+litp create -p /deployments/d1/clusters/c1/services/cups/ha_configs/conf1 -t ha-service-config -o status_interval=30 status_timeout=30 restart_limit=10 startup_retry_limit=3
+litp create -p /software/items/cups -t package -o name=cups
+litp create -p /software/services/cups -t service -o service_name=cups
+litp inherit -p /software/services/cups/packages/pkg1 -s /software/items/cups
+litp inherit -p /deployments/d1/clusters/c1/services/cups/applications/cups -s /software/services/cups
+litp create -p /deployments/d1/clusters/c1/services/cups/ipaddresses/ip1 -t vip -o ipaddress=172.16.201.10 network_name=traffic3
+litp create -p /deployments/d1/clusters/c1/services/cups/ipaddresses/ip2 -t vip -o ipaddress=172.16.201.11 network_name=traffic3
+litp inherit -p /deployments/d1/clusters/c1/services/cups/filesystems/fs1 -s /deployments/d1/clusters/c1/storage_profile/vxvm_profile/volume_groups/vg1_vxvm/file_systems/data1_vxvm
+litp create -p /deployments/d1/clusters/c1/services/httpd -t vcs-clustered-service -o active=2 standby=0 name=PL_vcs node_list=n1,n2
+litp create -p /deployments/d1/clusters/c1/services/httpd/ha_configs/conf1 -t ha-service-config -o status_interval=10 status_timeout=10 restart_limit=5 startup_retry_limit=2
+litp create -p /software/items/httpd -t package -o name=httpd epoch=0
+litp create -p /software/services/httpd -t service -o service_name=httpd
+litp inherit -p /software/services/httpd/packages/pkg1 -s /software/items/httpd
+litp inherit -p /deployments/d1/clusters/c1/services/httpd/applications/httpd -s /software/services/httpd
+litp create -p /deployments/d1/clusters/c1/services/httpd/ipaddresses/ip1 -t vip -o ipaddress=172.16.201.8 network_name=traffic3
+litp create -p /deployments/d1/clusters/c1/services/httpd/ipaddresses/ip2 -t vip -o ipaddress=172.16.201.9 network_name=traffic3
+litp create_plan
+litp run_plan
+litp update -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vg1_vxvm/file_systems/data1_vxvm -o size="2G"
+assertState -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/vg1_vxvm/file_systems/data1_vxvm Updated
+assertState -p /deployments/d1/clusters/c1/storage_profile/vxvm_profile/volume_groups/vg1_vxvm/file_systems/data1_vxvm Updated
+assertState -p /deployments/d1/clusters/c1/storage_profile/vxvm_profile/volume_groups/vg1_vxvm Applied
+litp create_plan
+litp run_plan

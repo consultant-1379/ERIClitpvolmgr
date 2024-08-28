@@ -1,0 +1,21 @@
+runLitpScript node_profile_base.inc
+add-plugins ./plugins/patch_mcollective_plugin
+
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name="hd0" size="512G" bootable=true uuid="6006016011602d00bc383819f679e311"
+litp create_plan
+litp run_plan
+
+litp update -p /deployments/at/clusters/cluster1/nodes/node1/storage_profile/volume_groups/root_vg/file_systems/root -o size=10G
+assertError --err_message "Decreasing the 'size' property of a file-system is not supported" create_plan
+litp restore_model
+
+assertNone -p /snapshots/
+litp create_snapshot
+assertState -p /snapshots Applied
+assertState -p /snapshots/snapshot Applied
+
+assertError --err_message 'no tasks were generated. No snapshot tasks added because Deployment Snapshot with timestamp' create_snapshot -n snapshot
+litp create_snapshot -n named_snapshot
+assertError --err_message 'A snapshot with name "named_snapshot" already exists' create_snapshot -n named_snapshot
+assertError --err_message 'A Named Backup Snapshot "name" can only contain characters in the range "[a-zA-Z0-9_-]"' create_snapshot -n ~5ddfa5
+assertError --err_message 'Snapshot name tag cannot exceed 92 characters which is the maximum available length for an ext4 or xfs file system' create_snapshot -n named_snapshot_with_a_really_long_name_that_will_hopefully_be_longer_than_the_file_size_requirements

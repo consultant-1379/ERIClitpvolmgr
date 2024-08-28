@@ -1,0 +1,54 @@
+#Description:
+#Verifies tasks for restore_snapshot and restore_snapshot -f
+
+
+add-plugins ../plugins/patch_mcollective_plugin
+runLitpScript ../minimum_deployment.inc
+
+litp create_plan
+litp run_plan
+
+litp create_snapshot
+
+litp restore_snapshot
+
+# initial checks
+assertTask 0 _check_restore_nodes_reachable_and_snaps_exist_cb ms1 /snapshots/snapshot Success 'Check peer node(s) "node1" and "node2" are reachable with all LVM snapshots present'
+assertTask 0 _check_valid_ss_rpc_task ms1 /snapshots/snapshot Success 'Check LVM snapshots on node(s) "node1" and "node2" are valid'
+
+#snapshot tasks
+assertTask 2 _restore_ss_rpc_task ms1 /deployments/d1/clusters/c1/nodes/node1/system Success 'Restore LVM vol "L_vg_1_root_" on node "node1"'
+assertTask 2 _restore_ss_rpc_task ms1 /deployments/d1/clusters/c1/nodes/node2/system Success 'Restore LVM vol "L_vg_1_root_" on node "node2"'
+assertTask 2 _base_rpc_task node1 /deployments/d1/clusters/c1/nodes/node1/system Success 'Restore grub copy on node "node1"'
+assertTask 2 _base_rpc_task node2 /deployments/d1/clusters/c1/nodes/node2/system Success 'Restore grub copy on node "node2"'
+
+assertPhaseLength 2 4
+
+#restart tasks
+assertTask 3 _restart_node ms1 /deployments/d1/clusters/c1 Success 'Restart node(s) "node1" and "node2"'
+assertTask 3 _wait_for_node_up ms1 /deployments/d1/clusters/c1/nodes/node1/system Success 'Wait for node "node1" to restart'
+assertTask 3 _wait_for_node_up ms1 /deployments/d1/clusters/c1/nodes/node2/system Success 'Wait for node "node2" to restart'
+assertNoCallbackTask _wait_for_nodes_up /deployments/d1/clusters/c1
+
+# make sure MS is last to reboot
+assertPlanLength 6
+assertPhaseLength 5 1
+assertTask 5 _restart_node ms1 /ms/system 
+
+litp restore_snapshot -f
+
+#initial checks
+assertTask 0 _check_valid_ss_rpc_task ms1 /snapshots/snapshot Success 'Check LVM snapshots on node(s) "node1" and "node2" are valid'
+assertNoCallbackTask _check_restore_nodes_reachable_and_snaps_exist_cb /snapshots/snapshot
+
+#restart tasks
+assertTask 3 _wait_for_nodes_up ms1 /deployments/d1/clusters/c1 Success 'Restart and wait for nodes'
+assertNoCallbackTask _restart_node /deployments/d1/clusters/c1
+assertNoCallbackTask _wait_for_node_up /deployments/d1/clusters/c1/nodes/node1/system
+assertNoCallbackTask _wait_for_node_up /deployments/d1/clusters/c1/nodes/node2/system
+
+
+# make sure MS is last to reboot
+assertPlanLength 6
+assertPhaseLength 5 1
+assertTask 5 _restart_node ms1 /ms/system 

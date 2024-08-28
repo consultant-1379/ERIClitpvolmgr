@@ -1,0 +1,5 @@
+#This test checks that the volume_driver property is set to 'lvm' by default
+
+litp create -p /infrastructure/storage/storage_profiles/test_profile -t storage-profile
+
+assertProperty /infrastructure/storage/storage_profiles/test_profile -o volume_driver="lvm"

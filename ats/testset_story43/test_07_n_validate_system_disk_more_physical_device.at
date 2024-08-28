@@ -1,0 +1,19 @@
+#Description:
+#    This test ensures storage profile physical device has exactly one
+#    matching system disk
+#
+#Actions:
+#    1. Create two physical devices referencing the same disk
+#    2. run create_plan
+#    2. Check validation error messages
+#
+#Result:
+#    Validation error: Disk 'hd0' referenced by multiple
+#    Physical Devices
+
+runLitpScript ../deploymentLV.inc
+
+litp create -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/physical_devices/internal2 -t physical-device -o device_name='hd0' 
+let __err_a --err_type ValidationError --err_message "Create plan failed: Disk 'hd0' referenced by multiple Physical Devices" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/system/disks/disk0
+
+assertError __err_a create_plan

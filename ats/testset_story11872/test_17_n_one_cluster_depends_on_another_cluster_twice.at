@@ -1,0 +1,26 @@
+## Verify that if one cluster has dependency_list property set to
+## depend on another cluster twice at snapshot creation time,
+## when a user run "restore_snapshot" the nodes restart tasks are not
+## re-ordered
+
+runLitpScript ../deploymentCluster.inc 
+add-plugins ../plugins/patch_mcollective_plugin
+
+
+litp update -p /deployments/d1/clusters/c1 -o dependency_list=c2,c2 
+litp update -p /deployments/d1/clusters/c2 -o dependency_list=c3
+
+litp create_snapshot
+
+assertLogMessage 'WARNING - Order of clusters is invalid.  Unordered cluster reboot sequence will be used during deployment snapshot restore for deployment "d1": Only one occurrence of a cluster is allowed in "dependency_list" property. The following clusters are repeated: c2.'
+
+clearLogs
+litp restore_snapshot
+
+assertLogMessage 'WARNING - Order of clusters is invalid.  Unordered cluster reboot sequence will be used during deployment snapshot restore for deployment "d1": Only one occurrence of a cluster is allowed in "dependency_list" property. The following clusters are repeated: c2.'
+
+assertCallbackTask _restart_node /deployments/d1/clusters/c1
+assertCallbackTask _restart_node /deployments/d1/clusters/c2
+assertCallbackTask _restart_node /deployments/d1/clusters/c3
+assertNoCallbackTask _restart_node /deployments/d1/clusters/c4
+

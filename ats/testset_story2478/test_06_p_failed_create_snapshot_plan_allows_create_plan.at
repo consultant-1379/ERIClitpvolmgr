@@ -1,0 +1,15 @@
+# verifies that existence of failed snapshot allows create_plan
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+failSnapshotPlan
+litp create_snapshot
+
+assertState -p /snapshots/snapshot Initial
+
+#change something to make sure a plan can be created
+litp remove -p /deployments/d1/clusters/c1/nodes/node1
+litp create_plan

@@ -1,0 +1,14 @@
+runLitpScript ./minimum_deployment.inc
+add-plugins ./plugins/patch_mcollective_plugin
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/profile_2 -o volume_driver="vxvm"
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/storeg -o volume_group_name="storeg"
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/storeg/file_systems/vol0 -o type="vxfs" mount_point="/jboss" size="2G"
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/storeg/file_systems/vol1 -o type="vxfs" mount_point="/torrents"  size="2G"
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/storeg/physical_devices/lun_0  -o device_name="lun_0"
+litp inherit -p /deployments/d1/clusters/c1/storage_profile/st1 -s /infrastructure/storage/storage_profiles/profile_2
+
+litp create_plan
+litp run_plan
+
+assertError --err_message 'Snapshot name tag cannot exceed 24 characters which is the maximum available length for a VxFS file system' create_snapshot -n named_snapshot_with_a_really_long_name_that_will_hopefully_be_longer_than_the_file_size_requirement

@@ -1,0 +1,35 @@
+#      Description:
+#          This test verifies if a vxfs filesystem has a snap_size of zero
+#          no snapshot task is created on create_snapshot/remove_snapshot.
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+
+litp create -p /infrastructure/storage/storage_profiles/sp2481 -t storage-profile -o volume_driver=vxvm 
+litp create -p /infrastructure/storage/storage_profiles/sp2481/volume_groups/vxvm_vol_grp -t volume-group -o volume_group_name='vxvm_vol_grp'
+litp create -p /infrastructure/storage/storage_profiles/sp2481/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -t file-system -o type='vxfs' size='2G' mount_point='/mp_2481_4'
+litp create -p /infrastructure/storage/storage_profiles/sp2481/volume_groups/vxvm_vol_grp/physical_devices/disk_1 -t physical-device -o device_name=lun_0
+litp inherit -p /deployments/d1/clusters/c1/storage_profile/sp2481 -s /infrastructure/storage/storage_profiles/sp2481
+
+litp create_plan
+litp run_plan
+
+litp create_snapshot
+
+assertCallbackTask _create_vxvm_snapshot_cb /snapshots/snapshot
+
+litp remove_snapshot
+
+assertCallbackTask _remove_vxvm_snapshot_cb /snapshots/snapshot
+
+
+litp update -p /deployments/d1/clusters/c1/storage_profile/sp2481/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size='0'
+
+litp create_snapshot
+assertNoCallbackTask _create_vxvm_snapshot_cb /snapshots/snapshot
+
+litp update -p /deployments/d1/clusters/c1/storage_profile/sp2481/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size='100'
+
+litp remove_snapshot
+assertNoCallbackTask _remove_vxvm_snapshot_cb /snapshots/snapshot

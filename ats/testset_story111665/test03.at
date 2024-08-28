@@ -1,0 +1,79 @@
+
+litp create -t system -p /infrastructure/systems/s3          -o system_name="ms"
+litp create -t disk   -p /infrastructure/systems/s3/disks/d0 -o name='hd0' size='1200G' bootable='true' uuid="ATA_VBOX_HARDDISK_VB24150799-28e77304"
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/ms_sp
+litp create -t volume-group -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1 -o volume_group_name='vg_root'
+litp create -t file-system -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs1 -o type='ext4' mount_point='/' size='70G' snap_size='10'
+
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/physical_devices/pd0 -o device_name='hd0'
+
+litp inherit -p /ms/system -s /infrastructure/systems/s3
+litp inherit -p /ms/storage_profile -s /infrastructure/storage/storage_profiles/ms_sp
+
+# Mock mcollective to return a fact name [hard coded] for a VG name
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+runPlanEnd
+# show show_plan
+
+# -----
+
+#    Description:
+#    This test ensures that an MS Kickstarted file system can not be decreased in size.
+
+# error
+let __cannot_descrease_ks_size --err_type ValidationError --err_message "Decreasing the 'size' property of a file-system is not supported"
+
+litp update -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs1 -o size='40G'
+assertError __cannot_descrease_ks_size create_plan
+
+#Clean up
+litp update -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs1 -o size='70G'
+
+# -----
+
+#    Description:
+#    This test ensures that an MS Kickstarted file system can not be modelled with a size below that in the Kickstart file
+
+litp create -t file-system -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs2 -o type='ext4' mount_point='/var' size='8G' snap_size='10'
+assertError __cannot_descrease_ks_size create_plan
+
+#Clean up
+litp update -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs2 -o size='10G'
+
+# -----
+
+#    Description:
+#    The following tests ensure that an MS Kickstarted file system can not be modelled or updated in size while a snapshot is present
+
+litp create_snapshot
+litp create -t file-system -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs3 -o type='ext4' mount_point='/home' size='12G' snap_size='10'
+
+# error
+let __cannot_model_ks_with_snapshot_present --err_type ValidationError --err_message 'Modeling an MS Kickstarted file-system while a snapshot exists is not supported'
+assertError __cannot_model_ks_with_snapshot_present  create_plan
+
+#Clean up
+litp remove_snapshot
+litp create_plan
+litp run_plan
+
+# error
+let __cannot_update_ks_size_with_snapshot_present --err_type ValidationError --err_message 'Changing the "size" property of an "ext4", "xfs" or "vxfs" file system while a snapshot exists is not supported'
+
+litp create_snapshot
+litp update -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs3 -o  size='8G'
+assertError __cannot_update_ks_size_with_snapshot_present  create_plan
+
+# -----
+
+#    Description:
+#    The following test ensures that an MS Kickstarted file system can not be removed
+
+# error
+let __cannot_remove_ks_fs --err_type ValidationError --err_message'The removal of an MS Kickstarted LVM file-system is not supported'
+
+litp remove -p /infrastructure/storage/storage_profiles/ms_sp/volume_groups/vg1/file_systems/fs1
+assertError __cannot_remove_ks_fs   create_plan

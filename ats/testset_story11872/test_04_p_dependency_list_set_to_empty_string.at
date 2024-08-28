@@ -1,0 +1,25 @@
+##  Verify that when a user run "restore_snapshot" and property
+##  "dependency_list" on at least one cluster is set to empty string,
+##  then nodes restart tasks are sequenced according to the
+##  sequence defined by the dependency graph and the empty string
+##  dependency list is ignored
+
+
+runLitpScript ../deploymentCluster.inc 
+add-plugins ../plugins/patch_mcollective_plugin
+
+
+litp update -p /deployments/d1/clusters/c1 -o dependency_list=c2 
+litp update -p /deployments/d1/clusters/c2 -o dependency_list=""
+litp update -p /deployments/d1/clusters/c3 -o dependency_list=c1
+
+litp create_snapshot
+
+litp restore_snapshot
+
+let __restart_c1 CallbackTask _restart_node /deployments/d1/clusters/c1
+let __restart_c2 CallbackTask _restart_node /deployments/d1/clusters/c2
+let __restart_c3 CallbackTask _restart_node /deployments/d1/clusters/c3
+
+assertTaskBeforeTask __restart_c2 __restart_c1
+assertTaskBeforeTask __restart_c1 __restart_c3

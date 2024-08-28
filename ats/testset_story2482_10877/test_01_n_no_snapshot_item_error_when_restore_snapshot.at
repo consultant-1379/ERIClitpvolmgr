@@ -1,0 +1,13 @@
+# This test will verify that if there is no snapshot item then the
+# user receives an error when they run restore_snapshot.
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp create_snapshot
+litp remove_snapshot
+assertError --err_message "No Deployment Snapshot to be restored" --err_type InvalidRequestError --err_vpath /snapshots/snapshot restore_snapshot
+

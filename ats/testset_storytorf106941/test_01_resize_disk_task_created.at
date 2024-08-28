@@ -1,0 +1,35 @@
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+runPlanEnd
+
+litp create -p /infrastructure/systems/system_1/disks/test_disk -t disk -o name='hd_test' size='19G' bootable='false' uuid='ATA_VBOX_HARDDISK_VB1d2c0e34-test'
+litp create -p /infrastructure/systems/system_2/disks/test_disk -t disk -o name='hd_test' size='19G' bootable='false' uuid='ATA_VBOX_HARDDISK_VB1d2c0e35-test'
+
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test -t volume-group -o volume_group_name="vg_test" 
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test/file_systems/fs_test -t file-system -o type='ext4' mount_point='/test' size=8G
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test/physical_devices/test_dev -t physical-device -o device_name=hd_test 
+
+litp create_plan
+runPlanEnd
+
+litp update -p /infrastructure/systems/system_1/disks/test_disk -o size='30G'
+litp update -p /infrastructure/systems/system_2/disks/test_disk -o size='30G'
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test/file_systems/fs_test -o size=10G
+
+litp create_plan
+assertCallbackTask _base_rpc_task /deployments/d1/clusters/c1/nodes/node1/system/disks/test_disk disk_fact_name=disk_ata_vbox_harddisk_vb1d2c0e34_test_dev
+assertCallbackTask _base_rpc_task /deployments/d1/clusters/c1/nodes/node2/system/disks/test_disk disk_fact_name=disk_ata_vbox_harddisk_vb1d2c0e35_test_dev
+assertConfigTask node1 lvm::volume vg_test_fs_test /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg_test/file_systems/fs_test size='10G' ensure='present' vg='vg_test' pv='["$::disk_ata_vbox_harddisk_vb1d2c0e34_test_dev"]' fstype='ext4'
+assertConfigTask node2 lvm::volume vg_test_fs_test /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_test/file_systems/fs_test size='10G' ensure='present' vg='vg_test' pv='["$::disk_ata_vbox_harddisk_vb1d2c0e35_test_dev"]' fstype='ext4'
+
+# Define tasks as above to ensure order
+let __pv_resize_node1 CallbackTask _base_rpc_task /deployments/d1/clusters/c1/nodes/node1/system/disks/test_disk disk_fact_name=disk_ata_vbox_harddisk_vb1d2c0e34_test_dev
+let __resize_lv_node1 ConfigTask node1 lvm::volume vg_test_fs_test /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg_test/file_systems/fs_test size='10G' ensure='present' vg='vg_test' pv='["$::disk_ata_vbox_harddisk_vb1d2c0e34_test_dev"]' fstype='ext4'
+
+let __pv_resize_node2 CallbackTask _base_rpc_task /deployments/d1/clusters/c1/nodes/node2/system/disks/test_disk disk_fact_name=disk_ata_vbox_harddisk_vb1d2c0e35_test_dev
+let __resize_lv_node2 ConfigTask node2 lvm::volume vg_test_fs_test /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_test/file_systems/fs_test size='10G' ensure='present' vg='vg_test' pv='["$::disk_ata_vbox_harddisk_vb1d2c0e35_test_dev"]' fstype='ext4'
+
+assertTaskBeforeTask __pv_resize_node1 __resize_lv_node1
+assertTaskBeforeTask __pv_resize_node2 __resize_lv_node2

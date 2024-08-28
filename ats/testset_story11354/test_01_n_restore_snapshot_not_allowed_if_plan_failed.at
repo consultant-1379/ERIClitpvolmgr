@@ -1,0 +1,17 @@
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+#Description:
+#    Verify that "create_snapshot -n" fails if last deployment plan failed
+
+litp create_plan
+litp run_plan
+
+#fail deployment plan
+litp create -p /software/items/telnet -t mock-package -o name=telnet
+litp inherit -p /ms/items/telnet -s /software/items/telnet
+litp create_plan
+failConfigTask package ms1 /ms/items/telnet
+litp run_plan
+assertPlanState failed
+
+assertError --err_type ValidationError --err_message "Cannot create named backup snapshot: It would not be possible to restore the deployment to a known good state because the last deployment plan was not successfully executed."  create_snapshot -n test

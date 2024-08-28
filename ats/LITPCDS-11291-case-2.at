@@ -1,0 +1,49 @@
+#
+# Disk uuids are unique across the volume groups within the same storage profile LITPCDS-11291
+#
+
+litp create -t os-profile -p /software/profiles/rhel_6_4 -o name=sample-profile version=rhel6 path=/var/www/html/6.4/os/x86_64/ arch=x86_64 breed=redhat
+litp create -t system     -p /infrastructure/systems/ms  -o system_name=MS1VM
+
+litp create -t system -p /infrastructure/systems/s3              -o system_name=MN3VM
+litp create -t disk   -p /infrastructure/systems/s3/disks/disk_0 -o name=hd0 size=28G bootable=true uuid=abc123
+litp create -t disk   -p /infrastructure/systems/s3/disks/disk_1 -o name=hd1 size=10G bootable=false uuid=abc123
+
+litp create -t network         -p /infrastructure/networking/networks/mgmt -o name=mgmt subnet=10.10.10.0/24 litp_management=true
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/sp2
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/sp2/volume_groups/vg1                   -o volume_group_name=vg_root
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/sp2/volume_groups/vg1/file_systems/root -o type=ext4 mount_point=/ size=4G snap_size=100
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/sp2/volume_groups/vg1/file_systems/swap -o type=swap mount_point=swap size=2G
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/sp2/volume_groups/vg1/physical_devices/disk_0 -o device_name=hd0
+
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/sp2/volume_groups/vg2    -o volume_group_name=vg_foo
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/sp2/volume_groups/vg2/file_systems/fs1 -o type=ext4 mount_point=/mnt_foo size=4G snap_size=100
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/sp2/volume_groups/vg2/physical_devices/disk_0 -o device_name=hd1
+
+litp inherit -p /ms/system -s /infrastructure/systems/ms
+
+litp create -p /deployments/d1 -t deployment
+litp create -p /deployments/d1/clusters/c1 -t cluster
+
+# >>>>>>>>>>>>>>> Node 1 set-up
+litp create -t node -p /deployments/d1/clusters/c1/nodes/n1 -o hostname=node1
+
+# Software
+litp inherit -p /deployments/d1/clusters/c1/nodes/n1/os -s /software/profiles/rhel_6_4
+
+# Storage
+litp inherit -p /deployments/d1/clusters/c1/nodes/n1/system          -s /infrastructure/systems/s3
+litp inherit -p /deployments/d1/clusters/c1/nodes/n1/storage_profile -s /infrastructure/storage/storage_profiles/sp2
+
+# Network
+litp create -p /deployments/d1/clusters/c1/nodes/n1/network_interfaces/nic0 -t eth -o device_name=eth0 macaddress=08:00:27:8E:62:36 network_name=mgmt ipaddress=10.10.10.103
+
+let __err_case_1 --err_type ValidationError "System Disk uuid 'abc123' is not unique"
+
+# Case 1: validation should catch that the uuids of the disks are the same
+assertError __err_case_1 create_plan
+
+# Case 2: validation should catch that the uuids are the same regardless of the capitalization in the uuid
+litp update -p /infrastructure/systems/s3/disks/disk_0 -o uuid=ABC123
+assertError __err_case_1 create_plan

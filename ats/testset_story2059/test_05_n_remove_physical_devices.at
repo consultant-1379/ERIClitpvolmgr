@@ -1,0 +1,11 @@
+#Try to remove inherited physical device
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+
+litp run_plan
+
+# Fix me!!: https://gerrit.ericsson.se/#/c/1131910/2/ats/testset_story2059/test_05_n_remove_physical_devices.at
+#assertError --err_message "Cannot delete an item that is (or has descendants that are) inherited to reference(s)" remove -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/physical_devices/disk_0

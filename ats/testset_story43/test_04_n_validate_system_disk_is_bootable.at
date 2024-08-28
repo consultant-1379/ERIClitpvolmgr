@@ -1,0 +1,19 @@
+#Description:
+#    This test ensures one system disk is bootable
+#
+#Actions:
+#    1. Define non-bootable system disk
+#    2. run create_plan
+#    2. Check validation error messages
+#
+#Result:
+#    Validation error: One System Disk should have 'bootable'
+#    Property set to 'true'
+
+
+runLitpScript ../deploymentLV.inc
+litp update -p /infrastructure/systems/system43/disks/disk0 -o bootable=false
+let __err_a --err_type ValidationError --err_message "Create plan failed: Exactly one System Disk should have 'bootable' Property set to 'true'" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/system
+let __err_b --err_type ValidationError --err_message "Create plan failed: For node 'mn99' the vg-root must be created on disks that include one bootable disk" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg0
+
+assertError __err_a __err_b create_plan

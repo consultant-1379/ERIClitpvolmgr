@@ -1,0 +1,12 @@
+runLitpScript node_profile_base.inc
+
+# QEMU with SATA/IDE Controller (singleblade setup)
+litp create -t disk -p /infrastructure/systems/system1/disks/disk0 -o name="hd0" size="512G" bootable=true uuid="ATA_QEMU_HARDDISK_QM00001"
+
+litp create_plan
+litp run_plan
+
+assertDirectoryContents node_profile_sb/ /opt/ericsson/nms/litp/etc/puppet/manifests/plugins/
+
+assertError create_plan
+# assertPlanLength 3

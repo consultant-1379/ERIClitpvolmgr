@@ -1,0 +1,30 @@
+##  Verify that when a user run "restore_snapshot" and the cluster
+##  to which at least one dependency list was set to point to is
+##  removed by at restore snapshot time, then nodes restart according
+##  to the sequence defined by the dependency graph at create
+##  snapshot time.
+
+
+runLitpScript ../deploymentCluster.inc 
+add-plugins ../plugins/patch_mcollective_plugin
+
+
+litp update -p /deployments/d1/clusters/c1 -o dependency_list=c2 
+
+litp create_snapshot
+
+litp update -p /deployments/d1/clusters/c1 -d dependency_list 
+litp remove -p /deployments/d1/clusters/c2
+
+litp create_plan
+litp run_plan
+
+
+litp restore_snapshot
+
+let __restart_c1 CallbackTask _restart_node /deployments/d1/clusters/c1
+let __restart_c2 CallbackTask _restart_node /deployments/d1/clusters/c2
+let __restart_c3 CallbackTask _restart_node /deployments/d1/clusters/c3
+
+assertTaskBeforeTask __restart_c2 __restart_c1
+assertTaskBeforeTask __restart_c1 __restart_c3

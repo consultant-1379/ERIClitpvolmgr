@@ -1,0 +1,24 @@
+#Description:
+#    This test ensures all volume group names are unique in a
+#    storage group
+#
+#Actions:
+#    1. Define same name for more volume groups
+#    2. run create_plan
+#    2. Check validation error messages
+#
+#Result:
+#    Validation error: Volume Group name is not unique for this
+#    Storage profile
+
+
+runLitpScript ../deploymentLV.inc
+
+litp create -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg1 -t volume-group -o volume_group_name='vg_root' 
+litp create -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg1/file_systems/root -t file-system -o type='ext4' mount_point='/test1' size='16G' snap_size='100' 
+litp create -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg1/physical_devices/internal -t physical-device -o device_name='hd1' 
+
+let __err_a --err_type ValidationError --err_message 'Create plan failed: Property "volume_group_name" is not unique for this storage-profile.' --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg0
+let __err_b --err_type ValidationError --err_message 'Create plan failed: Property "volume_group_name" is not unique for this storage-profile.' --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg1
+
+assertError __err_a __err_b create_plan

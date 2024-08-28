@@ -1,0 +1,20 @@
+#Description:
+#    Update the size of a file-system of type 'swap'
+#    (size increase is less than the space available on the disk)
+#Steps:
+#    1 Increase size of swap fs
+#    2 Create Plan
+#    3 Check for error message
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/swap -o size=3G
+
+let __err_a --err_type ValidationError --err_message "Create plan failed: A change of 'size' is only permitted on a file-system of type 'ext4', 'xfs' or 'vxfs'" --err_vpath /deployments/d1/clusters/c1/nodes/node1/storage_profile/volume_groups/vg_1/file_systems/swap
+let __err_b --err_type ValidationError --err_message "Create plan failed: A change of 'size' is only permitted on a file-system of type 'ext4', 'xfs' or 'vxfs'" --err_vpath /deployments/d1/clusters/c1/nodes/node2/storage_profile/volume_groups/vg_1/file_systems/swap
+
+assertError __err_a __err_b create_plan  

@@ -1,0 +1,28 @@
+#    Description:
+#        This test uses a mock plugin to check that if mco action vg2fact returns a value with _part2, as
+#        will happen if there are 2 disk partitions created by the kickstart, then this can be parsed,
+#        the uuid's matched and no validation error is raised.
+#        Also checks that correct fact name is included as arg on task to configure vg_root volume group
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp create -p /infrastructure/systems/system_ms/disks/hd1 -t disk -o name=hd1 size=1200G bootable=true uuid='ata_vbox_harddisk_vb24150799_28e77304'
+
+litp create -p /infrastructure/storage/storage_profiles/sp1 -t storage-profile -o volume_driver=lvm
+litp create -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1 -t volume-group -o volume_group_name='vg_root'
+litp create -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1/file_systems/fs1 -t file-system -o type=ext4 mount_point=/jump size=10G  snap_size=5
+litp create -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1/physical_devices/pd1 -t physical-device -o device_name='hd1'
+litp inherit -p /ms/storage_profile -s /infrastructure/storage/storage_profiles/sp1
+
+litp create_plan
+assertConfigTask ms1 lvm::volume vg1_fs1 /ms/storage_profile/volume_groups/vg1/file_systems/fs1 ensure='present' fstype='ext4' pv='["$::disk_ata_vbox_harddisk_vb24150799_28e77304_part2_dev"]' vg='vg_root' size='10G'
+
+litp run_plan
+
+litp update -p /infrastructure/storage/storage_profiles/sp1/volume_groups/vg1/file_systems/fs1 -o size=20G
+litp create_plan
+assertConfigTask ms1 lvm::volume vg1_fs1 /ms/storage_profile/volume_groups/vg1/file_systems/fs1 ensure='present' fstype='ext4' pv='["$::disk_ata_vbox_harddisk_vb24150799_28e77304_part2_dev"]' vg='vg_root' size='20G'

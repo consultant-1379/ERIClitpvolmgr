@@ -1,0 +1,20 @@
+#Description:
+#    This test ensures system disk name is unique inside storage group
+#
+#Actions:
+#    1. Define same disk name for more system disks
+#    2. run create_plan
+#    2. Check validation error messages
+#
+#Result:
+#    Validation error: System Disk name 'hd0' is not unique
+
+
+runLitpScript ../deploymentLV.inc
+
+litp update -p /deployments/d1/clusters/tmp/nodes/node43/system/disks/disk1 -o name='hd0' bootable=false
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/physical_devices/internal -o device_name='hd0' 
+let __err_a --err_type ValidationError --err_message "Create plan failed: System Disk name 'hd0' is not unique" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/system/disks/disk0
+let __err_b --err_type ValidationError --err_message "Create plan failed: System Disk name 'hd0' is not unique" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/system/disks/disk1
+
+assertError __err_a __err_b create_plan

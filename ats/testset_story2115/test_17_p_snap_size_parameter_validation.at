@@ -1,0 +1,29 @@
+#Description:
+#    This test will verify that the only accepted values for the
+#    snap_size parameter are 0->100
+#Actions:
+#     1. Get the root file system path
+#     2. Attempt to update snap_size of file system with invalid
+#     3. Verify that the user gets a error.
+#     4. Create a file system with valid snap_sizes
+#Result:
+#    The only accepted values for the snap_size parameter are 0->100
+
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+
+assertError --err_type ValidationError --err_property snap_size  --err_message "Invalid value 'x'. Value must be an integer between 0 and 100"  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o  snap_size='x'
+assertError --err_type ValidationError --err_property snap_size  --err_message "Invalid value '101'. Value must be an integer between 0 and 100"  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o  snap_size=101
+assertError --err_type ValidationError --err_property snap_size  --err_message "Invalid value '?'. Value must be an integer between 0 and 100"  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o  snap_size='?'
+assertError --err_type ValidationError --err_property snap_size  --err_message "Invalid value '-1'. Value must be an integer between 0 and 100"  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o  snap_size=-1
+
+
+litp  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o  snap_size=0 
+litp  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o  snap_size=50 
+litp  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o  snap_size=100 
+

@@ -1,0 +1,61 @@
+runLitpScript ./minimum_deployment.inc
+add-plugins ./plugins/patch_mcollective_plugin
+litp create -t disk -p /infrastructure/systems/system_1/disks/disk_1 -o name=disk_1 size=40G bootable=false uuid=3000000021c06390
+litp create -t disk -p /infrastructure/systems/system_2/disks/disk_1 -o name=disk_1 size=40G bootable=false uuid=3000000021c06390
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/sp1 -o volume_driver=vxvm
+litp create -t volume-group -p /infrastructure/storage/storage_profiles/sp1/volume_groups/storeg -o volume_group_name=storeg
+litp create -t file-system -p /infrastructure/storage/storage_profiles/sp1/volume_groups/storeg/file_systems/vol0 -o type='vxfs' mount_point="/jboss"  size='2G'
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/sp1/volume_groups/storeg/physical_devices/disk_1 -o device_name='disk_1'
+
+litp inherit -p /deployments/d1/clusters/c1/storage_profile/st1 -s /infrastructure/storage/storage_profiles/sp1
+
+litp create_plan
+litp run_plan
+
+let __err_case_1 --err_type ValidationError --err_message "A \"mount_point\" must be specified for a \"file-system\" of \"type\" 'vxfs'"
+let __err_case_2 --err_type ValidationError --err_message "A \"mount_point\" cannot be updated for a \"file-system\" of \"type\" 'vxfs'"
+
+
+#Test Case 13
+assertError __err_case_1 --err_property mount_point create -t file-system -p /infrastructure/storage/storage_profiles/sp1/volume_groups/storeg/file_systems/vol1 -o type='vxfs' size='2G'
+
+litp create -t file-system -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs_a -o size=20M mount_point=/A
+litp create -t file-system -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs_b -o size=20M mount_point=/B
+litp create_plan
+litp run_plan
+
+# 13142
+let __err_case_3 --err_type ValidationError --err_message 'Cannot change mount point "/A" from file system "fs_a" to "fs_b".'
+let __err_case_4 --err_type ValidationError --err_message 'Cannot change mount point "/B" from file system "fs_b" to "fs_a".'
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs_a -o mount_point=/B
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs_b -o mount_point=/A
+assertError __err_case_3 __err_case_4 create_plan
+
+# 13142 update + create
+litp restore_model
+let __err_case_5 --err_type ValidationError --err_message 'Cannot change mount point "/A" from file system "fs_a" to "fs_c".'
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs_a -o mount_point=/X
+litp create -t file-system -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs_c -o mount_point=/A size=20M
+assertError __err_case_5 create_plan
+
+# 13201
+litp restore_model
+let __err_case_6 --err_type ValidationError --err_message 'Cannot change mount point "/A" from file system "fs_a" to "fs_b".'
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs_a -d mount_point
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs_b -o mount_point=/A
+assertError __err_case_6 create_plan
+
+# Plan failed and properties reverted before running again
+litp restore_model
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs_a -o mount_point=/A2
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs_b -o mount_point=/B2
+litp create_plan
+runPlanStart
+stopPlan
+runPlanEnd
+assertPlanState stopped
+let __err_case_6 --err_type DoNothingPlanError --err_message 'no tasks were generated'
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs_a -o mount_point=/A
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/fs_b -o mount_point=/B
+assertError __err_case_6 create_plan
+

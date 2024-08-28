@@ -1,0 +1,36 @@
+## This test verifies that only valid values can be inputted in the backup_snap_size
+## property 
+
+
+runLitpScript ../deploymentVXVM.inc
+
+litp create_plan
+litp run_plan
+
+
+## 1. LVM
+
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o backup_snap_size=0
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o backup_snap_size=100
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o backup_snap_size=75
+litp update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o backup_snap_size=1
+
+assertError --err_type ValidationError  update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o backup_snap_size=-1
+assertError --err_type ValidationError update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o backup_snap_size=101
+assertError --err_type ValidationError update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o backup_snap_size=true
+assertError --err_type ValidationError update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o backup_snap_size=''
+assertError --err_type ValidationError update -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/root -o backup_snap_size='a'
+
+## 2. VXVM
+
+litp update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=0
+litp update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=100
+litp update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=75
+litp update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=1
+
+assertError --err_type ValidationError update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=-1
+assertError --err_type ValidationError update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=101
+assertError --err_type ValidationError update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=true
+assertError --err_type ValidationError update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size=''
+assertError --err_type ValidationError update -p /infrastructure/storage/storage_profiles/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size='a'
+

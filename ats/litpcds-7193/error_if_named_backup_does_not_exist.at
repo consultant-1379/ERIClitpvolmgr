@@ -1,0 +1,4 @@
+# 04. Verify that an error is reported if a named snapshot doesn't exist for the snapshot name-tag.
+
+assertError --err_type DoNothingPlanError --err_message 'no tasks were generated. No remove snapshot tasks added because Named Backup Snapshot "just_not_there" does not exist.' remove_snapshot -n just_not_there
+assertError --err_type DoNothingPlanError --err_message 'no tasks were generated. No remove snapshot tasks added because Named Backup Snapshot "not_there_either" does not exist.' remove_snapshot --name not_there_either

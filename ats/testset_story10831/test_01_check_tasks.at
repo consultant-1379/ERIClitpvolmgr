@@ -1,0 +1,60 @@
+##      Description:
+##          This test checks vxvm tasks for restore_snapshot and
+##          restore_snapshot -f
+
+
+runLitpScript ../minimum_deployment.inc
+
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create -p /infrastructure/storage/storage_profiles/sp2481 -t storage-profile -o volume_driver=vxvm 
+litp create -p /infrastructure/storage/storage_profiles/sp2481/volume_groups/vxvm_vol_grp -t volume-group -o volume_group_name='vxvm_vol_grp'
+litp create -p /infrastructure/storage/storage_profiles/sp2481/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -t file-system -o type='vxfs' size='2G' mount_point='/mp_2481_4'
+litp create -p /infrastructure/storage/storage_profiles/sp2481/volume_groups/vxvm_vol_grp/physical_devices/disk_1 -t physical-device -o device_name=lun_0
+litp inherit -p /deployments/d1/clusters/c1/storage_profile/sp2481 -s /infrastructure/storage/storage_profiles/sp2481
+
+litp create_plan
+litp run_plan
+
+litp create_snapshot
+
+
+## 1. Restore_snapshot
+litp restore_snapshot
+
+let __t1_check_active_nodes CallbackTask _check_active_nodes_cb /snapshots/snapshot
+let __t1_check_presence CallbackTask _check_presence_cb /snapshots/snapshot
+let __t1_check_validity CallbackTask _check_validity_cb /snapshots/snapshot
+
+let __t4_restore_vxvm_snapshot CallbackTask _restore_vxvm_snapshot_cb /snapshots/snapshot
+
+let __t5_restart_node CallbackTask _restart_node /deployments/d1/clusters/c1
+let __t5_wait_for_nodes_up CallbackTask _wait_for_nodes_up /deployments/d1/clusters/c1
+let __t5_wait_for_node1_up CallbackTask _wait_for_node_up /deployments/d1/clusters/c1/nodes/node1/system
+let __t5_wait_for_node2_up CallbackTask _wait_for_node_up /deployments/d1/clusters/c1/nodes/node2/system
+
+
+## 2. Assert task order
+assertTaskBeforeTask __t1_check_active_nodes __t4_restore_vxvm_snapshot
+assertTaskBeforeTask __t1_check_presence __t4_restore_vxvm_snapshot
+assertTaskBeforeTask __t1_check_validity __t4_restore_vxvm_snapshot
+
+assertTaskBeforeTask __t4_restore_vxvm_snapshot __t5_restart_node
+assertTaskBeforeTask __t4_restore_vxvm_snapshot __t5_wait_for_node1_up
+assertTaskBeforeTask __t4_restore_vxvm_snapshot __t5_wait_for_node2_up
+
+
+## 3. Restore_snapshot -f
+litp restore_snapshot -f
+
+
+## 4. Assert some tasks have been ommited from the plan
+assertNoCallbackTask _check_active_nodes_cb /snapshots/snapshot
+assertNoCallbackTask _check_presence_cb /snapshots/snapshot
+assertNoCallbackTask _wait_for_node_up /deployments/d1/clusters/c1/nodes/node1/system
+assertNoCallbackTask _wait_for_node_up /deployments/d1/clusters/c1/nodes/node2/system
+assertNoCallbackTask _restart_node /deployments/d1/clusters/c1
+
+## 5. Assert task order
+assertTaskBeforeTask __t1_check_validity __t4_restore_vxvm_snapshot
+assertTaskBeforeTask __t4_restore_vxvm_snapshot __t5_wait_for_nodes_up

@@ -1,0 +1,17 @@
+#    Description:
+#        Set the size of the file system to zero GB/MB/TB/invalid values
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+assertError --err_type ValidationError --err_message "Invalid value '0G'. Value must be a valid file system size with a non-zero numeral followed by one of 'M', 'G' or 'T'"  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o size=0G
+assertError --err_type ValidationError --err_message "Invalid value '0M'. Value must be a valid file system size with a non-zero numeral followed by one of 'M', 'G' or 'T'"  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o size=0M
+assertError --err_type ValidationError --err_message "Invalid value '0T'. Value must be a valid file system size with a non-zero numeral followed by one of 'M', 'G' or 'T'"  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o size=0T
+assertError --err_type ValidationError --err_message "Invalid value '5A'. Value must be a valid file system size with a non-zero numeral followed by one of 'M', 'G' or 'T'"  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o size=5A
+assertError --err_type ValidationError --err_message "Invalid value ''. Value must be a valid file system size with a non-zero numeral followed by one of 'M', 'G' or 'T'"  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o size=
+assertError --err_type ValidationError --err_message "Invalid value '10'. Value must be a valid file system size with a non-zero numeral followed by one of 'M', 'G' or 'T'"  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o size=10
+assertError --err_type ValidationError --err_message "Invalid value '9.1G'. Value must be a valid file system size with a non-zero numeral followed by one of 'M', 'G' or 'T'"  update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/root -o size=9.1G
+

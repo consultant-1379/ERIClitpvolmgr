@@ -1,0 +1,18 @@
+#Description:
+#    This test ensures one system disk is bootable
+#
+#Actions:
+#    1. Define 2 bootable system disks
+#    2. run create_plan
+#    2. Check validation error messages
+#
+#Result:
+#    Validation error: One System Disk should have 'bootable'
+#    Property set to 'true'
+
+
+runLitpScript ../deploymentLV.inc
+litp update -p /infrastructure/systems/system43/disks/disk1 -o bootable=true
+let __err_a --err_type ValidationError --err_message "Create plan failed: Exactly one System Disk should have 'bootable' Property set to 'true'" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/system
+
+assertError __err_a create_plan

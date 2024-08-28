@@ -1,0 +1,41 @@
+#Description:
+#    This test will verify that if the snap_size attribute is set to
+#    zero then no task is added for that particular volume.
+#    Also verifies that if snap_size is not specified then the
+#    snapshot volume size defaults to 100%.
+
+#Result:
+#    If the snap_size attribute is set to 0, then no task is added for
+#    that particular volume.
+#    If snap_size is not specified that the snapshot volume size
+#    defaults to 100%
+
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+litp run_plan
+
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/test -t file-system -o type=ext4 mount_point=/test size=4G
+
+assertProperty /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/test -o snap_size=100
+litp create_plan
+litp run_plan
+
+litp create_snapshot
+assertCallbackTask _create_snapshot_cb  /deployments/d1/clusters/c1/nodes/node1/system name=L_vg_1_root_
+assertCallbackTask _create_snapshot_cb  /deployments/d1/clusters/c1/nodes/node1/system name=L_vg_1_test_
+assertCallbackTask _create_snapshot_cb  /deployments/d1/clusters/c1/nodes/node2/system name=L_vg_1_root_
+assertCallbackTask _create_snapshot_cb  /deployments/d1/clusters/c1/nodes/node2/system name=L_vg_1_test_
+
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_1/file_systems/test -o snap_size=0
+litp remove_snapshot
+litp create_snapshot
+
+assertCallbackTask _create_snapshot_cb  /deployments/d1/clusters/c1/nodes/node1/system name=L_vg_1_root_
+assertNoCallbackTask _create_snapshot_cb  /deployments/d1/clusters/c1/nodes/node1/system name=L_vg_1_test_
+assertCallbackTask _create_snapshot_cb  /deployments/d1/clusters/c1/nodes/node2/system name=L_vg_1_root_
+assertNoCallbackTask _create_snapshot_cb  /deployments/d1/clusters/c1/nodes/node2/system name=L_vg_1_test_
+
+

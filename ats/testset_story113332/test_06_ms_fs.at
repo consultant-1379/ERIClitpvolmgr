@@ -1,0 +1,37 @@
+## This test verifies that backup_snap_size is also available for ms fs
+
+add-plugins ../plugins/patch_mcollective_plugin
+runLitpScript ../deploymentLV.inc
+
+litp create_plan
+litp run_plan
+
+litp create -t disk   -p /infrastructure/systems/system_ms/disks/hd0 -o name='sda' size='1200G' bootable='true' uuid="ATA_VBOX_HARDDISK_VB24150799-28e77304"
+
+litp create -p /infrastructure/storage/storage_profiles/profile_ms -t storage-profile
+litp create -p /infrastructure/storage/storage_profiles/profile_ms/volume_groups/vg_root -t volume-group -o volume_group_name='vg_root' 
+litp create -p /infrastructure/storage/storage_profiles/profile_ms/volume_groups/vg_root/file_systems/fs_ms_1 -t file-system -o type='ext4' mount_point='/test_ms_1' size='20M' snap_size='100' 
+litp create -p /infrastructure/storage/storage_profiles/profile_ms/volume_groups/vg_root/physical_devices/pdms -t physical-device -o device_name='sda' 
+litp inherit -p /ms/storage_profile -s /infrastructure/storage/storage_profiles/profile_ms
+
+
+litp create_plan
+litp run_plan
+
+litp update -p /infrastructure/storage/storage_profiles/profile_ms/volume_groups/vg_root/file_systems/fs_ms_1 -o snap_size=0
+litp update -p /infrastructure/storage/storage_profiles/profile_ms/volume_groups/vg_root/file_systems/fs_ms_1 -o backup_snap_size=0
+litp update -p /ms/storage_profile/volume_groups/vg_root/file_systems/fs_ms_1 -o backup_snap_size=100
+litp update -p /ms/storage_profile/volume_groups/vg_root/file_systems/fs_ms_1 -o snap_size=0
+assertProperty /ms/storage_profile/volume_groups/vg_root/file_systems/fs_ms_1  -o backup_snap_size=100
+
+litp create_snapshot
+assertNoCallbackTask _create_snapshot_cb /ms/system name=L_vg_root_fs_ms_1_test
+
+litp create_snapshot -n test
+assertCallbackTask _create_snapshot_cb /ms/system name=L_vg_root_fs_ms_1_test
+
+litp remove_snapshot
+assertNoCallbackTask _remove_snapshot_cb /ms/system name=L_vg_root_fs_ms_1_test
+
+litp remove_snapshot -n test
+assertCallbackTask _remove_snapshot_cb /ms/system name=L_vg_root_fs_ms_1_test

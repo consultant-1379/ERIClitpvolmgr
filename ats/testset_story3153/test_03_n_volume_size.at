@@ -1,0 +1,20 @@
+#Description:
+#    This test checks that a nodes file system cannot allocate more
+#    space than is available on the volume group
+#
+#Actions:
+#    1. Allocate more space for file systems than available on VG
+#    2. run create_plan
+#    2. Check validation error messages
+#
+#Result:
+#    Can not allocate more space for file systems than available on VG
+
+runLitpScript node_profile_base.inc
+
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/root -o size="10T"
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/swap -o size="1M"
+
+let __err1 --err_type ValidationError --err_message "The System Disks (64512 MB) on node 'node1' are not large enough for volume group requirement (20972121 MB). Volume group requirement = ((file systems including snapshots) 20971521 MB) + (LVM metadata 600 MB.)"
+let __err2 --err_type ValidationError --err_message "File System size '1M' on 'node1' is not an exact multiple of the LVM Logical Extent size ('4MB')"
+assertError __err1 __err2 create_plan

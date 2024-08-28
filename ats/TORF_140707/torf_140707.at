@@ -1,0 +1,36 @@
+# AT to check that VxVM resize tasks happen after tasks for the vcs-clustered-service that use it
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+add-plugins ../plugins/torf_140707
+
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/profile_2 -o volume_driver="vxvm"
+litp create -t volume-group    -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/storeg -o volume_group_name="storeg"
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/storeg/file_systems/vol0 -o type="vxfs" mount_point="/jboss" size="2G"
+litp create -t file-system     -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/storeg/file_systems/vol1 -o type="vxfs" mount_point="/torrents"  size="2G"
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/profile_2/volume_groups/storeg/physical_devices/lun_0  -o device_name="lun_0"
+litp inherit -p /deployments/d1/clusters/c1/storage_profile/st1 -s /infrastructure/storage/storage_profiles/profile_2
+
+litp create -t vcs-clustered-service -p /deployments/d1/clusters/c1/services/cs1 -o name=cs1 active=1 standby=1 node_list=node1,node2 online_timeout=300
+litp inherit -s /deployments/d1/clusters/c1/storage_profile/st1/volume_groups/storeg/file_systems/vol0 -p /deployments/d1/clusters/c1/services/cs1/filesystems/vol0
+
+litp create_plan
+litp run_plan
+
+# Now update cs1 with the intent of failing it
+litp update -p /deployments/d1/clusters/c1/services/cs1 -o online_timeout=50
+litp create_plan
+failCallbackTask cb_dummy_task /deployments/d1/clusters/c1/services/cs1
+litp run_plan
+
+assertAppliedPropertiesDeterminable -p /deployments/d1/clusters/c1/services/cs1 False
+
+# Now trigger a VxVM FS update
+litp update -p /deployments/d1/clusters/c1/storage_profile/st1/volume_groups/storeg/file_systems/vol0 -o size="3G"
+
+litp create_plan
+
+# Check that the resize task happens after the VCS task
+let __VCS_task CallbackTask cb_dummy_task /deployments/d1/clusters/c1/services/cs1
+let __Resize_task CallbackTask _base_with_imported_dg /deployments/d1/clusters/c1/storage_profile/st1/volume_groups/storeg/file_systems/vol0
+assertTaskBeforeTask __VCS_task __Resize_task

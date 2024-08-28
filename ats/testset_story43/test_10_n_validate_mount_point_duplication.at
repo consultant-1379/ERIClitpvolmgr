@@ -1,0 +1,22 @@
+#Description:
+#    This test ensures all mount points are unique in a storage group
+#
+#Actions:
+#    1. Define same mount points for more file systems
+#    2. run create_plan
+#    2. Check validation error messages
+#
+#Result:
+#    Validation error: File System mount_point in not unique for this
+#    Storage profile
+
+
+runLitpScript ../deploymentLV.inc
+
+litp create -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/t -t file-system -o type='ext4' mount_point='/t' size='1G' snap_size='100' 
+litp create -p /infrastructure/storage/storage_profiles/profile_test43/volume_groups/vg0/file_systems/t2 -t file-system -o type='ext4' mount_point='/t' size='1G' snap_size='100' 
+
+let __err_a --err_type ValidationError --err_message "Create plan failed: File System mount_point is not unique for this Storage profile" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg0/file_systems/t2
+let __err_b --err_type ValidationError --err_message "Create plan failed: File System mount_point is not unique for this Storage profile" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/storage_profile/volume_groups/vg0/file_systems/t
+
+assertError __err_a __err_b create_plan

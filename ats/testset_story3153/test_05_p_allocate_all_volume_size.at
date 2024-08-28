@@ -1,0 +1,23 @@
+#Description:
+#    This test checks that a nodes file system can allocate exactly the
+#    same space what is available on the volume group
+#
+#Actions:
+#    1. Allocate same space for file systems than available on VG
+#    2. run create_plan
+#    2. Check there is no any validation error
+#
+#Result:
+#    Can allocate same space for file systems as available on VG
+
+runLitpScript node_profile_base.inc
+
+litp update -p /infrastructure/systems/system1/disks/disk_0 -o size="612M"
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/root -o size="4M"
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/root_vg/file_systems/swap -o size="4M"
+
+litp create_plan
+
+litp update -p /infrastructure/systems/system1/disks/disk_0 -o size="611M"
+
+assertError --err_type ValidationError --err_message "The System Disks (611 MB) on node 'node1' are not large enough for volume group requirement (612 MB). Volume group requirement = ((file systems including snapshots) 12 MB) + (LVM metadata 600 MB.)" create_plan

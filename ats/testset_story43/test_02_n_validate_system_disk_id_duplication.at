@@ -1,0 +1,20 @@
+#Description:
+#    This test ensures system disk ID is unique inside storage group
+#
+#Actions:
+#    1. Define same disk ID for more system disks
+#    2. run create_plan
+#    2. Check validation error messages
+#
+#Result:
+#    Validation error: System Disk uuid 'ee7cf0a0-1922-401b-a1ae-
+#    6ec9261484c0' is not unique
+
+
+runLitpScript ../deploymentLV.inc
+
+litp update -p /deployments/d1/clusters/tmp/nodes/node43/system/disks/disk1 -o uuid='ee7cf0a0-1922-401b-a1ae-6ec9261484c0'
+let __err_a --err_type ValidationError --err_message "Create plan failed: System Disk uuid 'ee7cf0a0-1922-401b-a1ae-6ec9261484c0' is not unique" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/system/disks/disk0
+let __err_b --err_type ValidationError --err_message "Create plan failed: System Disk uuid 'ee7cf0a0-1922-401b-a1ae-6ec9261484c0' is not unique" --err_vpath /deployments/d1/clusters/tmp/nodes/node43/system/disks/disk1
+
+assertError __err_a __err_b create_plan

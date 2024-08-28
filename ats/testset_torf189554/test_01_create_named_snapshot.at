@@ -1,0 +1,7 @@
+runLitpScript torf189554_basic_setup.inc
+
+litp create_plan
+litp run_plan
+
+litp create_snapshot -n TORF-189554 --exclude_nodes=mn1
+assertCallbackTask _create_vxvm_snapshot_cb /snapshots/TORF-189554

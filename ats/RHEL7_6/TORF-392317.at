@@ -1,0 +1,75 @@
+# Basic lib for setting up a VCS cluster
+# Create an OS Profile
+litp create -t os-profile -p /software/profiles/rhel_6_4 -o name=sample-profile version=rhel6 path=/profiles/node-iso/ arch=x86_64 breed=redhat kopts_post='console=ttyS0,115200'
+
+# Create 2 node systems
+litp create -t system -p /infrastructure/systems/system_1 -o system_name=MN1VM
+
+# Nodes Disks
+litp create -t disk -p /infrastructure/systems/system_1/disks/disk0 -o name=hd0 size=500G bootable=true uuid=c2996df73ab69d1577ea390fb2c8
+
+# Create a Network Profile for the node
+litp create -t network -p /infrastructure/networking/networks/mgmt -o name=mgmt litp_management=true subnet=10.10.10.0/24
+litp create -t route -p /infrastructure/networking/routes/def -o subnet=0.0.0.0/0 gateway=10.10.10.1
+
+# Storage profile
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/profile_1
+litp create -t volume-group -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1 -o volume_group_name=vg_root
+litp create -t file-system -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/root -o type=xfs mount_point=/ size=10G
+litp create -t file-system -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/at_test1 -o type=xfs mount_point=/at/test1 size=12M
+litp create -t file-system -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/at_test2 -o type=xfs mount_point=/at/test2 size=2G
+litp create -t file-system -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/at_test3 -o mount_point=/at/test3 size=3G
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/physical_devices/internal -o device_name=hd0
+
+# IP for MS
+litp create -t eth -p /ms/network_interfaces/if0 -o network_name=mgmt ipaddress=10.10.10.100 macaddress=aa:aa:aa:aa:aa:aa device_name=eth0
+
+# Setup Cluster
+litp create -t deployment -p /deployments/test
+litp create -t vcs-cluster -p /deployments/test/clusters/cluster1 -o cluster_type=sfha llt_nets="heartbeat1,heartbeat2" low_prio_net="mgmt" cluster_id="1"
+
+# inherit networks
+
+# Setup Node1
+litp create -t node -p /deployments/test/clusters/cluster1/nodes/node1 -o hostname=mn1
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node1/system -s /infrastructure/systems/system_1
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node1/routes/default -s /infrastructure/networking/routes/def
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node1/storage_profile -s /infrastructure/storage/storage_profiles/profile_1
+litp inherit -p /deployments/test/clusters/cluster1/nodes/node1/os -s /software/profiles/rhel_6_4
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node1/network_interfaces/nic_0 -o device_name=eth0 macaddress=08:00:27:5B:C1:3F network_name=mgmt ipaddress=10.10.10.101
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node1/network_interfaces/nic_2 -o device_name=eth2 macaddress=08:00:27:06:C0:61 network_name=heartbeat1
+litp create -t eth -p /deployments/test/clusters/cluster1/nodes/node1/network_interfaces/nic_3 -o device_name=eth3 macaddress=08:00:27:21:7D:BC network_name=heartbeat2
+
+litp create -t network -p /infrastructure/networking/networks/n1 -o name=heartbeat1
+assertNoPlan
+
+# Check validation for minimum size
+let __err1 --err_type ValidationError --err_message  "File System of size '12M' on 'mn1' must be greater than ('16MB') for type 'xfs'"
+assertError __err1 __err1 create_plan
+
+
+litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/at_test1 -o size=1G
+litp create_plan
+assertPlanState initial
+assertProperty /deployments/test/clusters/cluster1/nodes/node1/storage_profile -o volume_driver="lvm"
+assertProperty /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/root -o type="xfs"
+assertState -p /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1 Initial
+litp run_plan
+assertPlanState successful
+
+assertNumberConfigTasks mn1 10
+
+assertConfigTask mn1 lvm::volume vg1_root /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/root ensure='present' fstype='xfs' pv='["$::disk_c2996df73ab69d1577ea390fb2c8_part3_dev"]' vg='vg_root' size='10G'
+
+assertConfigTask mn1 lvm::volume vg1_at_test1 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test1 ensure='present' fstype='xfs' pv='["$::disk_c2996df73ab69d1577ea390fb2c8_part3_dev"]' vg='vg_root' size='1G'
+assertConfigTask mn1 lvm::volume vg1_at_test2 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test2 ensure='present' fstype='xfs' pv='["$::disk_c2996df73ab69d1577ea390fb2c8_part3_dev"]' vg='vg_root' size='2G'
+assertConfigTask mn1 lvm::volume vg1_at_test3 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test3 ensure='present' fstype='xfs' pv='["$::disk_c2996df73ab69d1577ea390fb2c8_part3_dev"]' vg='vg_root' size='3G'
+
+assertConfigTask mn1 volmgr::create_mount_path /at/test1 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test1 mount_point='/at/test1'
+assertConfigTask mn1 volmgr::create_mount_path /at/test2 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test2 mount_point='/at/test2'
+assertConfigTask mn1 volmgr::create_mount_path /at/test3 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test3 mount_point='/at/test3'
+
+assertConfigTask mn1 mount /at/test1 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test1 atboot='true' ensure='mounted' pass='2' device='/dev/vg_root/vg1_at_test1' require='[{"type": "Lvm::Volume", "value": "vg1_at_test1"}]' options='defaults,x-systemd.device-timeout=300' fstype='xfs'
+assertConfigTask mn1 mount /at/test2 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test2 atboot='true' ensure='mounted' pass='2' device='/dev/vg_root/vg1_at_test2' require='[{"type": "Lvm::Volume", "value": "vg1_at_test2"}]' options='defaults,x-systemd.device-timeout=300' fstype='xfs'
+assertConfigTask mn1 mount /at/test3 /deployments/test/clusters/cluster1/nodes/node1/storage_profile/volume_groups/vg1/file_systems/at_test3 atboot='true' ensure='mounted' pass='2' device='/dev/vg_root/vg1_at_test3' require='[{"type": "Lvm::Volume", "value": "vg1_at_test3"}]' options='defaults,x-systemd.device-timeout=300' fstype='xfs'
+

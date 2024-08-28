@@ -1,0 +1,23 @@
+add-plugins ./plugins/patch_mcollective_plugin
+runLitpScript minimum_deployment.inc
+
+litp create -t disk -p /infrastructure/systems/system_ms/disks/d1 -o name="hd0_1" size=1200G bootable="true" uuid="ata_vbox_harddisk_vb24150799_28e77304"
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/sp3
+litp create -t volume-group -p /infrastructure/storage/storage_profiles/sp3/volume_groups/vg1 -o volume_group_name="vg_root"
+litp create -t file-system -p /infrastructure/storage/storage_profiles/sp3/volume_groups/vg1/file_systems/fs1 -o type="ext4" mount_point="/mount_ms_fs1" size="100M" snap_size="5" snap_external="false"
+litp create -t file-system -p /infrastructure/storage/storage_profiles/sp3/volume_groups/vg1/file_systems/fs2 -o type="ext4" mount_point="/mount_ms_fs2" size="100M" snap_size="0" snap_external="false"
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/sp3/volume_groups/vg1/physical_devices/pd1 -o device_name="hd0_1"
+litp inherit -p /ms/storage_profile -s /infrastructure/storage/storage_profiles/sp3
+
+litp create_plan
+litp run_plan
+
+litp create -t file-system -p /infrastructure/storage/storage_profiles/sp3/volume_groups/vg1/file_systems/test_fs_how_large_can_you_go_12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789 -o type=ext4 mount_point=/mount_ms_fs3_test_length_of_fs_name_4 size=100M snap_size=15
+
+assertError --err_message 'LVM LV name "vg1_test_fs_how_large_can_you_go_12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789", derived from volume-group "vg1" and file-system "test_fs_how_large_can_you_go_12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789", exceeds 50 characters.' create_plan
+
+litp remove -p /infrastructure/storage/storage_profiles/sp3/volume_groups/vg1/file_systems/test_fs_how_large_can_you_go_12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+
+litp create -t file-system -p /infrastructure/storage/storage_profiles/sp3/volume_groups/vg1/file_systems/test_positive  -o type=ext4 mount_point=/mount_ms_fs3_test_length_of_fs_name_4 size=100M snap_size=15
+
+litp create_plan

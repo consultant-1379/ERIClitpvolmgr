@@ -1,0 +1,24 @@
+## This test verifies that if the snap_size is set to 0 for a file
+## system there will be no snapshot for the file system
+
+runLitpScript ../deploymentVXVM.inc
+
+litp create_plan
+litp run_plan
+
+## 2. VXVM
+
+litp update -p /deployments/d1/clusters/c1/storage_profile/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o snap_size=0 
+assertPropertyUnset -p /deployments/d1/clusters/c1/storage_profile/sp/volume_groups/vxvm_vol_grp/file_systems/vxfs1 -o backup_snap_size 
+
+litp create_snapshot
+assertNoCallbackTask _create_vxvm_snapshot_cb /snapshots/snapshot
+
+litp create_snapshot -n test
+assertNoCallbackTask _create_vxvm_snapshot_cb /snapshots/test
+
+litp remove_snapshot -n test
+assertNoCallbackTask _remove_vxvm_snapshot_cb /snapshots/test
+
+litp remove_snapshot
+assertNoCallbackTask _remove_vxvm_snapshot_cb /snapshots/snapshot

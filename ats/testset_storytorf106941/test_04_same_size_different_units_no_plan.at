@@ -1,0 +1,25 @@
+# Verify that if I change Units on the size, there is no affect
+
+runLitpScript ../minimum_deployment.inc
+add-plugins ../plugins/patch_mcollective_plugin
+
+litp create_plan
+runPlanEnd
+
+litp create -p /infrastructure/systems/system_1/disks/test_disk -t disk -o name='hd_test' size='19G' bootable='false' uuid='ATA_VBOX_HARDDISK_VB1d2c0e34-test'
+litp create -p /infrastructure/systems/system_2/disks/test_disk -t disk -o name='hd_test' size='19G' bootable='false' uuid='ATA_VBOX_HARDDISK_VB1d2c0e35-test'
+
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test -t volume-group -o volume_group_name="vg_test" 
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test/file_systems/fs_test -t file-system -o type='ext4' mount_point='/test' size=8G
+litp create -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test/physical_devices/test_dev -t physical-device -o device_name=hd_test 
+
+litp create_plan
+runPlanEnd
+
+litp update -p /infrastructure/systems/system_1/disks/test_disk -o size='19456M'
+litp update -p /infrastructure/systems/system_2/disks/test_disk -o size='19456M'
+#litp update -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg_test/file_systems/fs_test -o size=10G
+
+let __err_1 --err_type DoNothingPlanError --err_message "Create plan failed: no tasks were generated"
+assertError __err_1 create_plan
+

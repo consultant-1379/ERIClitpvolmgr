@@ -1,0 +1,26 @@
+## Verify that when a user run "restore_snapshot" and a cluster
+## whose dependency_list depends on an non existing cluster,
+## then nodes restart are not reordered.
+
+runLitpScript ../deploymentCluster.inc 
+add-plugins ../plugins/patch_mcollective_plugin
+
+
+litp update -p /deployments/d1/clusters/c1 -o dependency_list=c2 
+litp update -p /deployments/d1/clusters/c2 -o dependency_list=c3
+litp update -p /deployments/d1/clusters/c3 -o dependency_list=c4
+
+litp create_snapshot
+
+assertLogMessage "WARNING - Order of clusters is invalid.  Unordered cluster reboot sequence will be used during deployment snapshot restore for deployment \"d1\": Unknown cluster with id='c4' specified in cluster dependency_list."
+
+clearLogs
+litp restore_snapshot
+
+assertLogMessage "WARNING - Order of clusters is invalid.  Unordered cluster reboot sequence will be used during deployment snapshot restore for deployment \"d1\": Unknown cluster with id='c4' specified in cluster dependency_list."
+
+assertCallbackTask _restart_node /deployments/d1/clusters/c1
+assertCallbackTask _restart_node /deployments/d1/clusters/c2
+assertCallbackTask _restart_node /deployments/d1/clusters/c3
+assertNoCallbackTask _restart_node /deployments/d1/clusters/c4
+

@@ -1,0 +1,5 @@
+litp create -t storage-profile -p /infrastructure/storage/storage_profiles/profile_1 -o volume_driver='lvm'
+litp create -t volume-group -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1 -o volume_group_name="root_vg"
+litp create -t file-system -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/root -o type=ext4 mount_point=/ size=100G
+litp create -t file-system -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/file_systems/swap -o type=swap mount_point=swap size=32G
+litp create -t physical-device -p /infrastructure/storage/storage_profiles/profile_1/volume_groups/vg1/physical_devices/internal -o device_name=hd0
